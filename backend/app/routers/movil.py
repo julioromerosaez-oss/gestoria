@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 from ..auth import auditar, requiere, solo_cliente
 from ..db import get_db
 from ..models import Albaran, Cliente, FacturaCompra, FacturaVenta, Rol, Usuario, VentaTPV
+from ..schemas import AlbaranOut, FacturaCompraOut
+from ..services import albaranes as srv_alb
 from ..services import almacen, cierres, documentos, iva, tpv
 
 router = APIRouter(prefix="/api/movil", tags=["app cliente"])
@@ -94,7 +96,11 @@ def _fila(f, tipo: str) -> dict:
             "iva": float(getattr(f, "cuota_iva", 0) or 0), "total": float(f.total or f.base_imponible or 0),
             "factura_id": getattr(f, "factura_compra_id", None), "estado": f.estado,
             "motivo_rechazo": f.motivo_rechazo, "tiene_imagen": f.tiene_imagen, "subida": f.creado_en,
-            "notas": f.notas, "confianza": f.extraccion_confianza}
+            "notas": f.notas, "confianza": f.extraccion_confianza,
+            **({"desglose": [{"tipo_iva": float(d.tipo_iva), "base": float(d.base), "cuota": float(d.cuota)} for d in f.desglose],
+                "efectivo": float(f.cobro_efectivo or 0), "tarjeta": float(f.cobro_tarjeta or 0), "num_tickets": f.num_tickets}
+               if tipo == "tpv" else {}),
+            **({"tercero_nif": getattr(f, "proveedor_nif", None) or getattr(f, "destinatario_nif", None)} if tipo != "tpv" else {})}
 
 
 @router.get("/facturas")
@@ -171,3 +177,22 @@ def mi_iva(anio: int | None = None, trimestre: int | None = None,
 @router.get("/margen")
 def mi_margen(anio: int | None = None, usuario: Usuario = Depends(ADMIN), db: Session = Depends(get_db)):
     return iva.margen(db, usuario.cliente_id, anio or date.today().year)
+
+
+@router.get("/albaranes/resumen")
+def albaranes_mes(anio: int, mes: int, usuario: Usuario = Depends(ADMIN), db: Session = Depends(get_db)):
+    """Albaranes del mes agrupados por proveedor, con su situación frente a la factura mensual."""
+    if not 1 <= mes <= 12:
+        raise HTTPException(422, "Mes 1-12")
+    grupos = srv_alb.resumen_mes(db, usuario.cliente_id, anio, mes)
+    ini, fin = cierres.rango(anio, mes)
+    filas = {a.id: AlbaranOut.model_validate(a).model_dump(mode="json") for a in db.scalars(
+        select(Albaran).where(Albaran.cliente_id == usuario.cliente_id, Albaran.fecha >= ini, Albaran.fecha < fin))}
+    return [{**g, "filas": [filas[i] for i in g["albaranes"] if i in filas]} for g in grupos]
+
+
+@router.get("/proveedores/documentos")
+def documentos_proveedor(clave: str, anio: int, usuario: Usuario = Depends(ADMIN), db: Session = Depends(get_db)):
+    d = cierres.documentos_proveedor(db, usuario.cliente_id, clave, anio)
+    return {"facturas": [FacturaCompraOut.model_validate(f).model_dump(mode="json") for f in d["facturas"]],
+            "albaranes": [AlbaranOut.model_validate(a).model_dump(mode="json") for a in d["albaranes"]]}

@@ -16,6 +16,7 @@ import ClienteProveedores from './gestoria/ClienteProveedores.jsx'
 import { ClienteDatos } from './gestoria/Clientes.jsx'
 import { useOutletContext } from 'react-router-dom'
 import MovilApp from './movil/MovilApp.jsx'
+import AreaCliente from './cliente/AreaCliente.jsx'
 
 const Sesion = createContext(null)
 export const useSesion = () => useContext(Sesion)
@@ -39,7 +40,14 @@ export default function App() {
 
   return (
     <Sesion.Provider value={{ usuario, salir }}>
-      {usuario.rol !== 'gestor' ? (
+      {usuario.rol === 'cliente_admin' ? (
+        // Administración del cliente: área web de escritorio, solo su empresa
+        <Routes>
+          <Route path="/movil/*" element={<Navigate to="/" replace />} />
+          <Route path="/*" element={<AreaCliente />} />
+        </Routes>
+      ) : usuario.rol !== 'gestor' ? (
+        // Compras y ventas: operativa diaria desde el móvil
         <Routes>
           <Route path="/movil/*" element={<MovilApp />} />
           <Route path="*" element={<Navigate to="/movil" replace />} />

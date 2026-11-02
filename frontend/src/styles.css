@@ -341,3 +341,18 @@ label.check input { width: auto; }
 .roles--columna { grid-template-columns: 1fr; }
 .nuevo-usuario { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borde); }
 @media (max-width: 900px) { .cab-cliente__fila { flex-direction: column; } }
+
+/* ---------- Área web de la administración del cliente ---------- */
+.app--cliente .lateral { background: #1f3b2d; }
+.marca--empresa { align-items: flex-start; }
+.marca--empresa > span:last-child { display: grid; gap: 2px; }
+.marca--empresa strong { font-size: 15px; line-height: 1.25; }
+.marca--empresa small { color: #a9c2b4; font-weight: 400; font-size: 12px; }
+.marca__inicial { width: 34px; height: 34px; flex: none; border-radius: 9px; background: rgba(255,255,255,.16); display: grid; place-items: center; font-weight: 700; font-size: 17px; color: #fff; }
+.app--cliente .lateral nav a { color: #cfe0d6; }
+.app--cliente .lateral nav a.active { background: rgba(255,255,255,.16); color: #fff; }
+.lateral__rol { color: #9fb3c8; font-size: 12px; }
+.ficha { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+.ficha dt { color: var(--texto-2); }
+.ficha dd { margin: 0; font-variant-numeric: tabular-nums; }
+.grafico { margin-bottom: 26px; }

@@ -132,16 +132,17 @@ def pendientes(db: Session, cliente_id: int, anio: int, mes: int, para_cliente: 
                     "importe": float(importe) if importe is not None else None, "ref": ref})
 
     # 1) documentos sin revisar
-    for Modelo, nombre, ruta, est in ((FacturaCompra, "facturas de compra", "compras", EstadoFactura.pendiente),
-                                      (FacturaVenta, "facturas de venta", "ventas", EstadoFactura.pendiente),
-                                      (VentaTPV, "cierres de caja", "ventas-tpv", EstadoFactura.pendiente),
-                                      (Albaran, "albaranes", "albaranes", EstadoAlbaran.pendiente)):
+    for Modelo, nombre, ruta, est in ((FacturaCompra, ("factura de compra", "facturas de compra"), "compras", EstadoFactura.pendiente),
+                                      (FacturaVenta, ("factura de venta", "facturas de venta"), "ventas", EstadoFactura.pendiente),
+                                      (VentaTPV, ("cierre de caja", "cierres de caja"), "ventas-tpv", EstadoFactura.pendiente),
+                                      (Albaran, ("albarán", "albaranes"), "albaranes", EstadoAlbaran.pendiente)):
         ids = db.scalars(select(Modelo.id).where(
             Modelo.cliente_id == cliente_id, Modelo.estado == est,
             (Modelo.fecha.is_(None)) | ((Modelo.fecha >= ini) & (Modelo.fecha < fin)))).all()
         if ids:
-            item("gestoria", "bloquea", f"{len(ids)} {nombre} " + ("en revisión por la gestoría" if para_cliente
-                                                                     else "pendientes de revisar"),
+            uno = len(ids) == 1
+            item("gestoria", "bloquea", f"{len(ids)} {nombre[0] if uno else nombre[1]} " + (
+                 "en revisión por la gestoría" if para_cliente else ("pendiente" if uno else "pendientes") + " de revisar"),
                  ref={"tipo": ruta, "ids": list(ids)})
     # 2) documentos rechazados: hay que volver a subirlos
     for Modelo, nombre, est in ((FacturaCompra, "Factura", EstadoFactura.rechazada),

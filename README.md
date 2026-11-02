@@ -4,10 +4,10 @@ Aplicación para una gestoría y sus clientes, con cuatro roles:
 
 | Rol | Dónde | Qué hace |
 |---|---|---|
-| **Gestoría** | Panel web (`/`) | Lista de clientes → **ficha del cliente por mes o por proveedor**: facturas de compra y venta, albaranes y su cuadre con la factura mensual, caja (TPV), IVA, **qué falta** del cliente y de sus proveedores, conciliación bancaria y **liquidación mensual** (cierre contable + informe). |
-| **Cliente · administración** | App (`/movil`, también en escritorio) | Por mes: ingresos y gastos **con y sin IVA**, IVA del mes y del trimestre, **qué reclamar a proveedores** y qué falta, sus proveedores, y el **cierre mensual** (bloquea el mes). |
-| **Cliente · compras** | App móvil | Sube **albaranes y facturas de proveedor** (foto o PDF). Ve solo lo que ha subido. |
-| **Cliente · ventas** | App móvil | Sube la **foto del cierre Z del TPV** cada día (restaurante, tienda). Ve solo sus cierres. |
+| **Gestoría** | Web (`/`) | Menú principal: **Panel** (clientes que necesitan atención, documentos por revisar, campaña de IVA) y **Clientes**. Al abrir un cliente aparece su menú: resumen y qué falta, facturas de compra y venta, albaranes (cuadre con la factura mensual), caja (TPV), proveedores, conciliación bancaria, apuntes contables, IVA y margen, datos y usuarios. El mes de trabajo se elige en la cabecera del cliente y se mantiene al cambiar de sección o de cliente; desde ahí se **liquida** o reabre el mes. |
+| **Cliente · administración** | Web en el ordenador (`/`) | Ve **solo su empresa** (su nombre en la cabecera): resumen del mes con y sin IVA, **qué reclamar a proveedores**, qué falta, sus facturas, albaranes, caja y proveedores (solo lectura, con la foto de cada documento), IVA y margen, y el **cierre mensual** (bloquea el mes). No usa la versión móvil. |
+| **Cliente · compras** | App móvil (`/movil`) | Operativa diaria: sube **albaranes y facturas de proveedor** (foto o PDF). Ve solo lo que ha subido. |
+| **Cliente · ventas** | App móvil (`/movil`) | Operativa diaria: sube la **foto del cierre Z del TPV** cada día y las **facturas de venta**. Ve solo lo que ha subido. |
 
 ### Lectura automática de documentos (OCR local, sin IA)
 
@@ -136,11 +136,11 @@ Usuarios de demo (restaurante con meses liquidados, septiembre cerrado y octubre
 | Rol | Usuario | Contraseña |
 |---|---|---|
 | Gestoría | gestor@gestoria.local | Gestor.2026 |
-| Administración (restaurante) | admin@cliente.local | Cliente.2026 |
-| Compras (restaurante) | compras@cliente.local | Cliente.2026 |
-| Ventas / caja (restaurante) | ventas@cliente.local | Cliente.2026 |
+| Administración del restaurante (web, `/`) | admin@cliente.local | Cliente.2026 |
+| Compras del restaurante (móvil, `/movil`) | compras@cliente.local | Cliente.2026 |
+| Ventas / caja del restaurante (móvil, `/movil`) | ventas@cliente.local | Cliente.2026 |
 
-Tests: `cd backend && pytest` (21 tests). Cubren seguridad (401/403, token manipulado, fuerza bruta, cabeceras, ficheros falsos, aislamiento entre clientes y entre usuarios, permisos por rol), la lectura de fotos reales generadas (factura, albarán torcido, PDF, cierre Z), el cuadre de albaranes con la factura mensual, el cierre y bloqueo del mes, la liquidación con sus asientos y el flujo contable completo.
+Tests: `cd backend && pytest` (22 tests). Cubren seguridad (401/403, token manipulado, fuerza bruta, cabeceras, ficheros falsos, aislamiento entre clientes y entre usuarios, permisos por rol), la lectura de fotos reales generadas (factura, albarán torcido, PDF, cierre Z), el cuadre de albaranes con la factura mensual, el cierre y bloqueo del mes, la liquidación con sus asientos y el flujo contable completo.
 
 ## Contabilidad que genera
 

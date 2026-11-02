@@ -98,3 +98,16 @@ def test_mes_completo_cierre_y_liquidacion(c):
     # vista por proveedor
     provs = {p["proveedor_nif"]: p for p in c.get("/api/clientes/1/proveedores?anio=2026", headers=g).json()}
     assert provs["A28476505"]["albaranes_sin_factura"] == 1 and provs["B87654323"]["total"] == 217.8
+
+
+def test_area_web_de_administracion(c):
+    """La administración del cliente ve sus albaranes por proveedor y sus proveedores; compras no, y nadie ve otras empresas."""
+    admin, compras, otro = (tok(c, e, "cli123") for e in ("u1@x.es", "compras@x.es", "u2@x.es"))
+    subir(c, compras, "albaran_foto.jpg")
+    g = c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=admin).json()
+    assert len(g) == 1 and g[0]["proveedor_nif"] == "A28476505" and len(g[0]["filas"]) == 1
+    d = c.get(f"/api/movil/proveedores/documentos?anio=2026&clave={g[0]['clave']}", headers=admin).json()
+    assert len(d["albaranes"]) == 1
+    assert c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=compras).status_code == 403
+    assert c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=otro).json() == []   # otra empresa: nada
+    assert c.get("/api/clientes", headers=admin).status_code == 403                           # no ve la lista de empresas

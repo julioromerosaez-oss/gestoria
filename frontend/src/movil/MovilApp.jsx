@@ -1,15 +1,15 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, eur, fecha } from '../api'
 import { useSesion } from '../App.jsx'
-import { Estado, GraficoMargen, ImagenFactura, ListaFalta, NOMBRES_MES, ResumenMes, SelectorMes } from '../comun.jsx'
+import { Estado, ImagenFactura } from '../comun.jsx'
 
 // Pestañas de cada rol del cliente
+// La app móvil es la operativa diaria: compras y ventas. La administración usa el área web.
 const NAV = {
-  cliente_admin: [['mes', '◎', 'Mi mes'], ['docs', '☰', 'Documentos'], ['subir', '＋', 'Subir'], ['prov', '⇄', 'Proveedores']],
   cliente_compras: [['subir', '＋', 'Subir'], ['docs', '☰', 'Mis subidas']],
-  cliente_ventas: [['caja', '＋', 'Cierre de caja'], ['docs', '☰', 'Mis cierres']],
+  cliente_ventas: [['caja', '＋', 'Cierre de caja'], ['venta', '⎙', 'Factura de venta'], ['docs', '☰', 'Mis subidas']],
 }
-const ROL_TXT = { cliente_admin: 'Administración', cliente_compras: 'Compras', cliente_ventas: 'Ventas / caja' }
+const ROL_TXT = { cliente_compras: 'Compras', cliente_ventas: 'Ventas / caja' }
 
 export default function MovilApp() {
   const { usuario, salir } = useSesion()
@@ -19,17 +19,16 @@ export default function MovilApp() {
   useEffect(() => { api('/api/movil/perfil').then(setPerfil) }, [])
 
   return (
-    <div className={`movil ${usuario.rol === 'cliente_admin' ? 'movil--ancho' : ''}`}>
+    <div className="movil">
       <header className="movil__cab">
         <div><small>{perfil?.nombre} · {ROL_TXT[usuario.rol]}</small><strong>{perfil?.razon_social}</strong></div>
         <button className="btn btn--enlace" onClick={salir}>Salir</button>
       </header>
       <main className="movil__cuerpo">
-        {pestana === 'mes' && <MiMes />}
         {pestana === 'docs' && <Documentos rol={usuario.rol} />}
         {pestana === 'subir' && <Subir rol={usuario.rol} alTerminar={() => setPestana('docs')} />}
         {pestana === 'caja' && <CierreCaja alTerminar={() => setPestana('docs')} />}
-        {pestana === 'prov' && <Proveedores />}
+        {pestana === 'venta' && <Subir rol={usuario.rol} alTerminar={() => setPestana('docs')} />}
       </main>
       <nav className="movil__nav" style={{ gridTemplateColumns: `repeat(${nav.length}, 1fr)` }}>
         {nav.map(([id, ic, txt]) => (
@@ -42,84 +41,21 @@ export default function MovilApp() {
   )
 }
 
-/* ------------------------------------------------------------------ administración: el mes */
-function MiMes() {
-  const hoy = new Date()
-  const [p, setP] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 })
-  const [estados, setEstados] = useState(null)
-  const [datos, setDatos] = useState(null)
-  const [margen, setMargen] = useState(null)
-  const [msg, setMsg] = useState('')
-  const cargar = () => {
-    setDatos(null)
-    api(`/api/movil/meses/${p.anio}/${p.mes}`).then(setDatos)
-    api(`/api/movil/meses?anio=${p.anio}`).then(setEstados)
-  }
-  useEffect(cargar, [p.anio, p.mes])
-  useEffect(() => { api(`/api/movil/margen?anio=${p.anio}`).then(setMargen) }, [p.anio])
-  const cerrar = async () => {
-    if (!confirm(`¿Cerrar ${NOMBRES_MES[p.mes - 1]} ${p.anio}? Ya no se podrán subir documentos con fecha de ese mes; si falta algo, tendrá que incluirlo la gestoría.`)) return
-    try { await api(`/api/movil/meses/${p.anio}/${p.mes}/cerrar`, { method: 'POST' }); setMsg('Mes cerrado. Tu gestoría ya puede liquidarlo.'); cargar() }
-    catch (e) { setMsg(e.message) }
-  }
-  const r = datos?.resumen
-  const reclamar = datos?.pendientes.filter((x) => x.quien === 'proveedor') || []
-  const tuyo = datos?.pendientes.filter((x) => x.quien !== 'proveedor') || []
-  return (
-    <>
-      <section className="m-tarjeta">
-        <SelectorMes anio={p.anio} mes={p.mes} onCambio={(a, m) => setP({ anio: a, mes: m })} estados={estados} />
-      </section>
-      {!datos ? <p className="cargando">Cargando…</p> : (
-        <>
-          <section className="m-tarjeta">
-            <div className="m-cab-seccion"><h2>Cierre de {r.nombre_mes}</h2><Estado estado={r.estado} /></div>
-            <ResumenMes r={r} />
-          </section>
-          <section className="m-tarjeta">
-            <h2>Qué tienes que reclamar a proveedores</h2>
-            {reclamar.length ? <ListaFalta items={reclamar} paraCliente /> : <p className="ok">✓ Nada que reclamar este mes.</p>}
-          </section>
-          <section className="m-tarjeta">
-            <h2>Qué falta</h2>
-            <ListaFalta items={tuyo} paraCliente />
-          </section>
-          {msg && <p className="ok">{msg}</p>}
-          {r.estado === 'abierto' && (
-            <button className="btn btn--primario btn--ancho btn--grande" onClick={cerrar}>Cerrar {NOMBRES_MES[p.mes - 1].toLowerCase()}</button>
-          )}
-          {r.estado !== 'abierto' && <p className="m-nota centrado">Mes {r.estado}. Si necesitas incluir algo, pide a tu gestoría que lo reabra.</p>}
-        </>
-      )}
-      {margen && (
-        <section className="m-tarjeta">
-          <h2>Ingresos y gastos de {margen.anio} (sin IVA)</h2>
-          <GraficoMargen meses={margen.meses} compacto />
-          <p className="m-nota">Margen acumulado {eur(margen.margen)} ({margen.margen_pct.toLocaleString('es-ES')} %). Toca un mes para ver el detalle.</p>
-        </section>
-      )}
-    </>
-  )
-}
-
 /* ------------------------------------------------------------------ documentos */
 const TIPO_TXT = { compra: 'Factura de gasto', venta: 'Factura de venta', albaran: 'Albarán', tpv: 'Cierre de caja' }
 
 function Documentos({ rol }) {
-  const hoy = new Date()
-  const [p, setP] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 })
   const [lista, setLista] = useState(null)
   const [filtro, setFiltro] = useState('todas')
   const [abierta, setAbierta] = useState(null)
   useEffect(() => {
     setLista(null)
-    api(rol === 'cliente_admin' ? `/api/movil/facturas?anio=${p.anio}&mes=${p.mes}` : '/api/movil/facturas').then(setLista)
-  }, [p.anio, p.mes])
-  const filtros = rol === 'cliente_admin' ? [['todas', 'Todo'], ['compra', 'Gastos'], ['albaran', 'Albaranes'], ['venta', 'Ventas'], ['tpv', 'Caja']] : null
+    api('/api/movil/facturas').then(setLista)
+  }, [])
+  const filtros = rol === 'cliente_ventas' ? [['todas', 'Todo'], ['tpv', 'Caja'], ['venta', 'Facturas']] : [['todas', 'Todo'], ['compra', 'Facturas'], ['albaran', 'Albaranes']]
   const vis = (lista || []).filter((f) => filtro === 'todas' || f.tipo === filtro)
   return (
     <>
-      {rol === 'cliente_admin' && <section className="m-tarjeta"><SelectorMes anio={p.anio} mes={p.mes} onCambio={(a, m) => setP({ anio: a, mes: m })} /></section>}
       {filtros && <div className="m-segmento">{filtros.map(([v, t]) => <button key={v} role="radio" aria-checked={filtro === v} onClick={() => setFiltro(v)}>{t}</button>)}</div>}
       {lista === null && <p className="cargando">Cargando…</p>}
       {lista && vis.length === 0 && <p className="vacio">No hay documentos.</p>}
@@ -214,12 +150,12 @@ function Leido({ r, destino }) {
 }
 
 function Subir({ rol, alTerminar }) {
-  const opciones = rol === 'cliente_admin'
-    ? [['auto', 'Automático'], ['compra', 'Gasto'], ['albaran', 'Albarán'], ['venta', 'Ingreso']]
+  const opciones = rol === 'cliente_ventas'
+    ? [['venta', 'Factura de venta']]
     : [['auto', 'Automático'], ['compra', 'Factura'], ['albaran', 'Albarán']]
   const [archivo, setArchivo] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [tipo, setTipo] = useState('auto')
+  const [tipo, setTipo] = useState(opciones[0][0])
   const [notas, setNotas] = useState('')
   const [estado, setEstado] = useState('')
   const [resultado, setResultado] = useState(null)
@@ -246,10 +182,10 @@ function Subir({ rol, alTerminar }) {
   )
   return (
     <section className="m-tarjeta">
-      <h2>Subir factura o albarán</h2>
-      <div className="m-segmento" role="radiogroup">
+      <h2>{rol === 'cliente_ventas' ? 'Subir factura de venta' : 'Subir factura o albarán'}</h2>
+      {opciones.length > 1 && <div className="m-segmento" role="radiogroup">
         {opciones.map(([v, t]) => <button key={v} role="radio" aria-checked={tipo === v} onClick={() => setTipo(v)}>{t}</button>)}
-      </div>
+      </div>}
       {tipo === 'auto' && <p className="m-nota">El sistema detecta si es una factura o un albarán y lo archiva donde toca.</p>}
       <Captura archivo={archivo} setArchivo={setArchivo} preview={preview} setPreview={setPreview} />
       {archivo && (
@@ -307,32 +243,5 @@ function CierreCaja({ alTerminar }) {
         </>
       )}
     </section>
-  )
-}
-
-/* ------------------------------------------------------------------ administración: proveedores */
-function Proveedores() {
-  const anio = new Date().getFullYear()
-  const [filas, setFilas] = useState(null)
-  useEffect(() => { api(`/api/movil/proveedores?anio=${anio}`).then(setFilas) }, [])
-  if (!filas) return <p className="cargando">Cargando…</p>
-  return (
-    <>
-      <section className="m-tarjeta"><h2>Tus proveedores en {anio}</h2><p className="m-nota">Facturas revisadas por tu gestoría y albaranes pendientes de facturar.</p></section>
-      <ul className="m-lista">
-        {filas.map((f) => (
-          <li key={f.clave}>
-            <div className="m-lista__fila">
-              <div><strong>{f.proveedor_nombre || f.proveedor_nif}</strong>
-                <small>{f.facturas} facturas · {f.albaranes} albaranes</small></div>
-              <div className="derecha"><strong>{eur(f.total)}</strong>
-                {f.albaranes_sin_factura > 0 && <span className="estado estado--pendiente">Reclamar factura ({f.albaranes_sin_factura} alb.)</span>}</div>
-            </div>
-            <span className="mini-meses">{Array.from({ length: 12 }, (_, i) => <i key={i} className={f.meses.includes(i + 1) ? 'si' : ''} title={NOMBRES_MES[i]} />)}</span>
-          </li>
-        ))}
-        {filas.length === 0 && <p className="vacio">Aún no hay proveedores este año.</p>}
-      </ul>
-    </>
   )
 }
