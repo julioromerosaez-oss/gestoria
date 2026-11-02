@@ -1,0 +1,14 @@
+# Nunca enviar secretos ni artefactos al construir las imágenes
+.env
+.env.*
+!.env.example
+certs/
+certbot-www/
+.git/
+**/node_modules/
+frontend/dist/
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+backend/uploads/
+backend/*.db
