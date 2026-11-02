@@ -152,8 +152,7 @@ def crear_usuario_supabase(email: str, password: str, nombre: str) -> str:
     """Crea el usuario en Supabase Auth (Admin API) y devuelve su UUID."""
     r = httpx.post(
         f"{config.SUPABASE_URL}/auth/v1/admin/users",
-        headers={"apikey": config.SUPABASE_SERVICE_ROLE_KEY,
-                 "Authorization": f"Bearer {config.SUPABASE_SERVICE_ROLE_KEY}"},
+        headers=config.cabeceras_supabase(),
         json={"email": email, "password": password, "email_confirm": True,
               "user_metadata": {"nombre": nombre}},
         timeout=15,
