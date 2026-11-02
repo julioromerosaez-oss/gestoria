@@ -31,6 +31,7 @@ def c():
         Usuario(email="u1@x.es", nombre="U1", rol=Rol.cliente_admin, cliente_id=c1.id, password_hash=hash_password("cli123")),
         Usuario(email="compras@x.es", nombre="C1", rol=Rol.cliente_compras, cliente_id=c1.id, password_hash=hash_password("cli123")),
         Usuario(email="ventas@x.es", nombre="V1", rol=Rol.cliente_ventas, cliente_id=c1.id, password_hash=hash_password("cli123")),
+        Usuario(email="cv@x.es", nombre="CV", rol=Rol.cliente_compras_ventas, cliente_id=c1.id, password_hash=hash_password("cli123")),
         Usuario(email="u2@x.es", nombre="U2", rol=Rol.cliente_admin, cliente_id=c2.id, password_hash=hash_password("cli123")),
     ])
     db.commit()

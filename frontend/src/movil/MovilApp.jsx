@@ -8,8 +8,9 @@ import { Estado, ImagenFactura } from '../comun.jsx'
 const NAV = {
   cliente_compras: [['subir', '＋', 'Subir'], ['docs', '☰', 'Mis subidas']],
   cliente_ventas: [['caja', '＋', 'Cierre de caja'], ['venta', '⎙', 'Factura de venta'], ['docs', '☰', 'Mis subidas']],
+  cliente_compras_ventas: [['subir', '＋', 'Compras'], ['caja', '＋', 'Caja'], ['venta', '⎙', 'Venta'], ['docs', '☰', 'Mis subidas']],
 }
-const ROL_TXT = { cliente_compras: 'Compras', cliente_ventas: 'Ventas / caja' }
+const ROL_TXT = { cliente_compras: 'Compras', cliente_ventas: 'Ventas / caja', cliente_compras_ventas: 'Compras y ventas' }
 
 export default function MovilApp() {
   const { usuario, salir } = useSesion()
@@ -26,9 +27,9 @@ export default function MovilApp() {
       </header>
       <main className="movil__cuerpo">
         {pestana === 'docs' && <Documentos rol={usuario.rol} />}
-        {pestana === 'subir' && <Subir rol={usuario.rol} alTerminar={() => setPestana('docs')} />}
+        {pestana === 'subir' && <Subir key="compras" modo="compras" alTerminar={() => setPestana('docs')} />}
         {pestana === 'caja' && <CierreCaja alTerminar={() => setPestana('docs')} />}
-        {pestana === 'venta' && <Subir rol={usuario.rol} alTerminar={() => setPestana('docs')} />}
+        {pestana === 'venta' && <Subir key="ventas" modo="ventas" alTerminar={() => setPestana('docs')} />}
       </main>
       <nav className="movil__nav" style={{ gridTemplateColumns: `repeat(${nav.length}, 1fr)` }}>
         {nav.map(([id, ic, txt]) => (
@@ -52,7 +53,11 @@ function Documentos({ rol }) {
     setLista(null)
     api('/api/movil/facturas').then(setLista)
   }, [])
-  const filtros = rol === 'cliente_ventas' ? [['todas', 'Todo'], ['tpv', 'Caja'], ['venta', 'Facturas']] : [['todas', 'Todo'], ['compra', 'Facturas'], ['albaran', 'Albaranes']]
+  const filtros = {
+    cliente_ventas: [['todas', 'Todo'], ['tpv', 'Caja'], ['venta', 'Facturas']],
+    cliente_compras: [['todas', 'Todo'], ['compra', 'Facturas'], ['albaran', 'Albaranes']],
+    cliente_compras_ventas: [['todas', 'Todo'], ['compra', 'Compras'], ['albaran', 'Albaranes'], ['tpv', 'Caja'], ['venta', 'Ventas']],
+  }[rol]
   const vis = (lista || []).filter((f) => filtro === 'todas' || f.tipo === filtro)
   return (
     <>
@@ -149,8 +154,8 @@ function Leido({ r, destino }) {
   )
 }
 
-function Subir({ rol, alTerminar }) {
-  const opciones = rol === 'cliente_ventas'
+function Subir({ modo, alTerminar }) {
+  const opciones = modo === 'ventas'
     ? [['venta', 'Factura de venta']]
     : [['auto', 'Automático'], ['compra', 'Factura'], ['albaran', 'Albarán']]
   const [archivo, setArchivo] = useState(null)
@@ -182,7 +187,7 @@ function Subir({ rol, alTerminar }) {
   )
   return (
     <section className="m-tarjeta">
-      <h2>{rol === 'cliente_ventas' ? 'Subir factura de venta' : 'Subir factura o albarán'}</h2>
+      <h2>{modo === 'ventas' ? 'Subir factura de venta' : 'Subir factura o albarán'}</h2>
       {opciones.length > 1 && <div className="m-segmento" role="radiogroup">
         {opciones.map(([v, t]) => <button key={v} role="radio" aria-checked={tipo === v} onClick={() => setTipo(v)}>{t}</button>)}
       </div>}

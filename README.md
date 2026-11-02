@@ -78,7 +78,7 @@ Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL 
 ### Capa API (defensa en profundidad)
 
 - **Autenticación propia**: contraseñas con PBKDF2-SHA256 (310.000 iteraciones), JWT HS256 firmado con `SECRET_KEY` (≥ 32 caracteres, obligatoria en producción) con emisor, audiencia y caducidad (8 h). Bloqueo de la cuenta 15 minutos tras 5 fallos y el mismo mensaje exista o no el email. *(El código conserva un modo `AUTH_MODO=supabase` por si en el futuro la gestoría tiene su propio proyecto.)*
-- **Roles**: el rol (`gestor`, `cliente_admin`, `cliente_compras`, `cliente_ventas`) sale de la tabla `usuarios` en cada petición, no del token. Compras no puede ver IVA, resumen ni cierres de caja; ventas no puede subir facturas de proveedor; ninguno de los dos ve lo que han subido otros usuarios.
+- **Roles**: el rol (`gestor`, `cliente_admin`, `cliente_compras`, `cliente_ventas`, `cliente_compras_ventas`) sale de la tabla `usuarios` en cada petición, no del token. Compras no puede ver IVA, resumen ni cierres de caja; ventas no puede subir facturas de proveedor; ninguno de los dos ve lo que han subido otros usuarios.
 - **Aislamiento entre clientes**: en `/api/movil/*` el `cliente_id` siempre sale del usuario autenticado. Si alguien pide un ID de otro cliente recibe 404.
 - **Subidas**: el tipo se detecta por los *magic bytes* (JPG, PNG, WEBP, HEIC, PDF), el nombre lo pone el servidor, hay límite de tamaño y se protege contra *path traversal*.
 - **Fotos**: van a un bucket **privado**. El navegador nunca recibe una URL pública: la API comprueba permisos y entrega el fichero.
@@ -148,10 +148,11 @@ Usuarios de demo (restaurante con meses liquidados, septiembre cerrado y octubre
 
 | Rol | Usuario | Contraseña |
 |---|---|---|
-| Gestoría | gestor@gestoria.local | Gestor.2026 |
-| Administración del restaurante (web, `/`) | admin@cliente.local | Cliente.2026 |
-| Compras del restaurante (móvil, `/movil`) | compras@cliente.local | Cliente.2026 |
-| Ventas / caja del restaurante (móvil, `/movil`) | ventas@cliente.local | Cliente.2026 |
+| Gestoría (http://localhost:8000) | roberto@complutumasesores.com | Rober2026 |
+| Administración del restaurante (web, http://localhost:8000) | patrilucre1953@gmail.com | Patri2026 |
+| Compras y ventas del restaurante (móvil, http://localhost:8000/movil) | joselucre1953@gmail.com | Javi2026 |
+
+Estas claves son solo para la base de demo local. En el servidor los usuarios se crean desde la pantalla del cliente con contraseñas distintas.
 
 Tests: `cd backend && pytest` (22 tests). Cubren seguridad (401/403, token manipulado, fuerza bruta, cabeceras, ficheros falsos, aislamiento entre clientes y entre usuarios, permisos por rol), la lectura de fotos reales generadas (factura, albarán torcido, PDF, cierre Z), el cuadre de albaranes con la factura mensual, el cierre y bloqueo del mes, la liquidación con sus asientos y el flujo contable completo.
 

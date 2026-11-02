@@ -41,6 +41,20 @@ def test_permisos_por_rol(c):
     assert c.get(f"/api/movil/facturas/tpv/{tid}/imagen", headers=admin).status_code == 200
 
 
+def test_rol_compras_y_ventas(c):
+    """Una sola persona sube compras y cierres de caja; sigue sin ver IVA ni el mes."""
+    cv = tok(c, "cv@x.es", "cli123")
+    assert subir(c, cv, "albaran_foto.jpg").json()["tipo"] == "albaran"
+    assert subir(c, cv, "cierre_z_foto.jpg", ruta="/api/movil/cierres-z").status_code == 201
+    for ruta in ("/api/movil/iva", "/api/movil/margen", "/api/movil/meses/2026/10"):
+        assert c.get(ruta, headers=cv).status_code == 403
+    assert {d["tipo"] for d in c.get("/api/movil/facturas", headers=cv).json()} == {"albaran", "tpv"}
+    # no ve lo que suben otros usuarios del mismo negocio
+    compras = tok(c, "compras@x.es", "cli123")
+    assert subir(c, compras, "factura_foto.jpg", tipo="compra").status_code == 201
+    assert "compra" not in {d["tipo"] for d in c.get("/api/movil/facturas", headers=cv).json()}
+
+
 def test_mes_completo_cierre_y_liquidacion(c):
     g = tok(c, "g@x.es", "gestor123")
     admin, compras, ventas = (tok(c, e, "cli123") for e in ("u1@x.es", "compras@x.es", "ventas@x.es"))

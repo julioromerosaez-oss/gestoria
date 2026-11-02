@@ -108,7 +108,8 @@ function FormCliente({ inicial, onGuardado }) {
 
 const ROLES = [['cliente_admin', 'Administración', 've su mes, lo que falta y hace el cierre mensual'],
   ['cliente_compras', 'Compras', 'sube albaranes y facturas de proveedor'],
-  ['cliente_ventas', 'Ventas / caja', 'sube los cierres Z del TPV']]
+  ['cliente_ventas', 'Ventas / caja', 'sube los cierres Z del TPV'],
+  ['cliente_compras_ventas', 'Compras y ventas', 'sube albaranes, facturas y cierres Z desde el móvil']]
 
 function Usuarios({ cliente }) {
   const [d, setD] = useState({ nombre: '', email: '', password: '', rol: 'cliente_admin' })

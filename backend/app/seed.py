@@ -47,8 +47,8 @@ def main():
     db = SessionLocal()
     hoy = date.today()
 
-    gestor = Usuario(email="gestor@gestoria.local", nombre="Ana Gestora", rol=Rol.gestor,
-                     password_hash=hash_password("Gestor.2026"))
+    gestor = Usuario(email="roberto@complutumasesores.com", nombre="Roberto", rol=Rol.gestor,
+                     password_hash=hash_password("Rober2026"))
     db.add(gestor)
     rest = Cliente(nif="B65432106", razon_social="Bar Restaurante La Plaza SL", tipo=TipoCliente.sociedad,
                    email="admin@laplaza.es", telefono="963000111", serie_venta="R")
@@ -59,15 +59,17 @@ def main():
     db.add_all([rest, fonta, fisio])
     db.flush()
     usuarios = {}
-    for email, nombre, rol, cli in (("admin@cliente.local", "Marta Ruiz", Rol.cliente_admin, rest),
-                                    ("compras@cliente.local", "Pedro (compras)", Rol.cliente_compras, rest),
-                                    ("ventas@cliente.local", "Lucía (caja)", Rol.cliente_ventas, rest),
-                                    ("carlos@cliente.local", "Carlos Martín", Rol.cliente_admin, fonta)):
+    for email, nombre, rol, cli, clave in (
+            ("patrilucre1953@gmail.com", "Patri", Rol.cliente_admin, rest, "Patri2026"),
+            ("joselucre1953@gmail.com", "José", Rol.cliente_compras_ventas, rest, "Javi2026"),
+            ("carlos@cliente.local", "Carlos Martín", Rol.cliente_admin, fonta, "Cliente.2026")):
         usuarios[email] = Usuario(email=email, nombre=nombre, rol=rol, cliente_id=cli.id,
-                                  password_hash=hash_password("Cliente.2026"))
+                                  password_hash=hash_password(clave))
         db.add(usuarios[email])
     db.flush()
-    compras_u, ventas_u, admin_u = (usuarios[e] for e in ("compras@cliente.local", "ventas@cliente.local", "admin@cliente.local"))
+    # Compras y ventas las sube la misma persona
+    admin_u = usuarios["patrilucre1953@gmail.com"]
+    compras_u = ventas_u = usuarios["joselucre1953@gmail.com"]
 
     # ---------------- restaurante: enero .. octubre ----------------
     ultimo_mes = date(hoy.year, hoy.month, 1) - timedelta(days=1)       # mes anterior completo
@@ -185,8 +187,9 @@ def main():
                 fn(db, f)
     db.commit()
     print("Datos de demo creados.\n"
-          "  Gestoría:            gestor@gestoria.local / Gestor.2026\n"
-          "  Restaurante (app):   admin@cliente.local · compras@cliente.local · ventas@cliente.local / Cliente.2026\n"
+          "  Gestoría:                 roberto@complutumasesores.com / Rober2026   (http://localhost:8000)\n"
+          "  Administración (web):     patrilucre1953@gmail.com / Patri2026         (http://localhost:8000)\n"
+          "  Compras y ventas (móvil): joselucre1953@gmail.com / Javi2026          (http://localhost:8000/movil)\n"
           "  Fontanero (app):     carlos@cliente.local / Cliente.2026")
 
 
