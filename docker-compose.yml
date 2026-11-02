@@ -1,0 +1,51 @@
+# Producción: Nginx (único servicio expuesto) -> FastAPI (red interna) -> Supabase/Genia (TLS)
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    environment:
+      DOMINIO: ${DOMINIO}
+      API_UPSTREAM: api:8000
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro          # fullchain.pem + privkey.pem (Let's Encrypt)
+      - ./certbot-www:/var/www/certbot:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [publica, interna]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /etc/nginx/conf.d, /tmp]
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      ENTORNO: produccion
+      AUTH_MODO: local            # login propio (no Supabase Auth)
+      STORAGE_MODO: supabase      # fotos en el bucket privado de Supabase
+      SUPABASE_BUCKET: gestoria-facturas
+      DB_SCHEMA: gestoria         # esquema aislado dentro del proyecto Genia
+      SERVIR_FRONTEND: "0"
+      ALLOWED_HOSTS: ${DOMINIO},api,127.0.0.1
+      CORS_ORIGINS: https://${DOMINIO}
+      DB_SSLMODE: verify-full
+      DB_SSLROOTCERT: /run/secrets/supabase-ca.crt
+    volumes:
+      - ./certs/supabase-ca.crt:/run/secrets/supabase-ca.crt:ro
+    # SIN "ports": no es accesible desde fuera, solo desde Nginx
+    expose: ["8000"]
+    networks: [interna]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  publica: {}
+  interna: {}   # la API necesita salida a Supabase, así que no es "internal: true"

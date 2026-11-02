@@ -1,0 +1,108 @@
+# =====================================================================
+#  Capa de entrada: Nginx (reverse proxy + TLS + frontend)
+#  - Único servicio expuesto a Internet (puertos 80 y 443).
+#  - FastAPI NO publica puertos: solo se llega a ella a través de aquí.
+#  - Variables ${DOMINIO} y ${API_UPSTREAM} sustituidas al arrancar (envsubst).
+# =====================================================================
+
+server_tokens off;
+
+# --- Rate limiting (por IP real del cliente) ---
+limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+# subidas: solo cuentan los POST (consultar la lista de documentos no se limita)
+map $request_method $clave_subida { POST $binary_remote_addr; default ""; }
+limit_req_zone $clave_subida zone=subidas:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=api:10m rate=15r/s;
+limit_conn_zone $binary_remote_addr zone=conexiones:10m;
+limit_req_status 429;
+limit_conn_status 429;
+
+upstream gestoria_api {
+    server ${API_UPSTREAM};
+    keepalive 16;
+}
+
+# --- HTTP: solo redirige a HTTPS (y desafío de Let's Encrypt) ---
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMINIO};
+
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+# --- HTTPS ---
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${DOMINIO};
+
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # --- Cabeceras de seguridad ---
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(self)" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    # El navegador solo puede hablar con este dominio: ninguna URL externa
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
+
+    # --- Límites ---
+    client_max_body_size 12m;
+    client_body_timeout 30s;
+    client_header_timeout 15s;
+    keepalive_timeout 30s;
+    limit_conn conexiones 30;
+
+    # Nada de ficheros ocultos (.env, .git…)
+    location ~ /\. { deny all; return 404; }
+
+    # --- API ---
+    location /api/ {
+        limit_req zone=api burst=40 nodelay;
+        proxy_pass http://gestoria_api;
+        include /etc/nginx/snippets/proxy_api.conf;
+    }
+    location = /api/auth/login {
+        limit_req zone=login burst=3 nodelay;
+        proxy_pass http://gestoria_api;
+        include /etc/nginx/snippets/proxy_api.conf;
+    }
+    location ~ ^/api/movil/(facturas|cierres-z)$ {
+        limit_req zone=subidas burst=10 nodelay;
+        proxy_pass http://gestoria_api;
+        include /etc/nginx/snippets/proxy_api.conf;
+    }
+    # Documentación de la API nunca expuesta públicamente
+    location ~ ^/api/(docs|openapi\.json|redoc) { return 404; }
+
+    # --- Frontend (SPA: gestoría y web app móvil) ---
+    root /usr/share/nginx/html;
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        try_files $uri =404;
+    }
+    location / {
+        add_header Cache-Control "no-cache" always;
+        add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" always;
+        try_files $uri /index.html;
+    }
+}

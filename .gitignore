@@ -1,0 +1,9 @@
+.env
+certs/
+certbot-www/
+node_modules/
+frontend/dist/
+backend/uploads/
+backend/*.db
+__pycache__/
+.pytest_cache/
