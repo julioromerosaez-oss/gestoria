@@ -333,3 +333,23 @@ def meses_del_anio(db: Session, cliente_id: int, anio: int) -> list[dict]:
     hoy = date.today()
     return [{"mes": m, "nombre": NOMBRES_MES[m - 1], "estado": est.get(m, "abierto"),
              "futuro": date(anio, m, 1) > hoy} for m in range(1, 13)]
+
+
+def contadores(db: Session, cliente_id: int, anio: int, mes: int) -> dict:
+    ini, fin = rango(anio, mes)
+
+    def n(Modelo, *cond):
+        return len(db.scalars(select(Modelo.id).where(Modelo.cliente_id == cliente_id, *cond)).all())
+
+    del_mes = lambda M: (M.fecha.is_(None)) | ((M.fecha >= ini) & (M.fecha < fin))  # noqa: E731
+    falta = pendientes(db, cliente_id, anio, mes)
+    return {
+        "compras": n(FacturaCompra, FacturaCompra.estado == EstadoFactura.pendiente, del_mes(FacturaCompra)),
+        "ventas": n(FacturaVenta, FacturaVenta.estado == EstadoFactura.pendiente, del_mes(FacturaVenta)),
+        "albaranes": n(Albaran, Albaran.estado == EstadoAlbaran.pendiente, del_mes(Albaran))
+        + sum(1 for g in srv_alb.resumen_mes(db, cliente_id, anio, mes) if g["situacion"] != "cuadra"),
+        "tpv": n(VentaTPV, VentaTPV.estado == EstadoFactura.pendiente, del_mes(VentaTPV)),
+        "banco": n(MovimientoBanco, MovimientoBanco.conciliado.is_(False)),
+        "falta": len(falta),
+        "bloquean": sum(1 for p in falta if p["gravedad"] == "bloquea"),
+    }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { api, eur, trimestreActual } from '../api'
 import { GraficoMargen } from '../comun.jsx'
 
@@ -27,26 +27,47 @@ export function Liquidacion({ liq }) {
   )
 }
 
+/** IVA del trimestre del mes seleccionado + margen del año, para un cliente. */
 export default function Iva() {
-  const { clienteId, setClienteId } = useOutletContext()
-  const [p, setP] = useState(trimestreActual())
+  const { clienteId, anio, mes } = useOutletContext()
+  const trimestre = Math.floor((mes - 1) / 3) + 1
   const [liq, setLiq] = useState(null)
   const [margen, setMargen] = useState(null)
-  const [todos, setTodos] = useState([])
-
   useEffect(() => {
-    if (clienteId) {
-      api(`/api/iva/liquidacion?cliente_id=${clienteId}&anio=${p.anio}&trimestre=${p.trimestre}`).then(setLiq)
-      api(`/api/margen?cliente_id=${clienteId}&anio=${p.anio}`).then(setMargen)
-    } else {
-      api(`/api/iva/resumen?anio=${p.anio}&trimestre=${p.trimestre}`).then(setTodos)
-    }
-  }, [clienteId, p.anio, p.trimestre])
-
+    api(`/api/iva/liquidacion?cliente_id=${clienteId}&anio=${anio}&trimestre=${trimestre}`).then(setLiq)
+    api(`/api/margen?cliente_id=${clienteId}&anio=${anio}`).then(setMargen)
+  }, [clienteId, anio, trimestre])
   return (
     <>
-      <div className="cabecera">
-        <h1>IVA y margen</h1>
+      {liq && <section className="tarjeta"><h2>Liquidación de IVA · {trimestre}º trimestre {anio} (modelo 303)</h2><Liquidacion liq={liq} /></section>}
+      {margen && (
+        <section className="tarjeta">
+          <h2>Margen {anio}</h2>
+          <div className="kpis kpis--peq">
+            <div className="kpi"><span className="kpi__valor">{eur(margen.ingresos)}</span><span className="kpi__titulo">Ingresos (base)</span></div>
+            <div className="kpi"><span className="kpi__valor">{eur(margen.gastos)}</span><span className="kpi__titulo">Gastos (base)</span></div>
+            <div className="kpi"><span className="kpi__valor">{eur(margen.margen)}</span><span className="kpi__titulo">Margen · {margen.margen_pct.toLocaleString('es-ES')} %</span></div>
+          </div>
+          <GraficoMargen meses={margen.meses} />
+        </section>
+      )}
+    </>
+  )
+}
+
+/** Campaña de IVA: el trimestre de todos los clientes (va en el Panel). */
+export function CampanaIva() {
+  const { anio: a0, trimestre: t0 } = trimestreActual()
+  // por defecto, el trimestre que toca presentar: el anterior al actual
+  const [p, setP] = useState(t0 === 1 ? { anio: a0 - 1, trimestre: 4 } : { anio: a0, trimestre: t0 - 1 })
+  const [todos, setTodos] = useState(null)
+  const nav = useNavigate()
+  useEffect(() => { setTodos(null); api(`/api/iva/resumen?anio=${p.anio}&trimestre=${p.trimestre}`).then(setTodos) }, [p.anio, p.trimestre])
+  const mesFin = `${p.anio}-${String(p.trimestre * 3).padStart(2, '0')}`
+  return (
+    <section className="tarjeta">
+      <div className="m-cab-seccion">
+        <h2>Campaña de IVA · {p.trimestre}T {p.anio}</h2>
         <div className="acciones">
           <select value={p.trimestre} onChange={(e) => setP({ ...p, trimestre: Number(e.target.value) })} aria-label="Trimestre">
             {[1, 2, 3, 4].map((t) => <option key={t} value={t}>{t}º trimestre</option>)}
@@ -56,35 +77,18 @@ export default function Iva() {
           </select>
         </div>
       </div>
-      {!clienteId ? (
-        <section className="tarjeta">
-          <h2>Campaña de IVA · {p.trimestre}T {p.anio}</h2>
-          <table className="tabla clicable">
-            <thead><tr><th>Cliente</th><th>NIF</th><th className="num">Repercutido</th><th className="num">Soportado</th><th className="num">Resultado</th><th>Situación</th><th>Pendientes</th></tr></thead>
-            <tbody>{todos.map((l) => (
-              <tr key={l.cliente_id} onClick={() => setClienteId(l.cliente_id)}>
-                <td>{l.razon_social}</td><td>{l.nif}</td><td className="num">{eur(l.total_repercutido)}</td>
-                <td className="num">{eur(l.total_soportado)}</td><td className="num"><strong>{eur(l.resultado)}</strong></td>
-                <td>{l.situacion}</td><td>{l.facturas_pendientes_revision ? <span className="estado estado--pendiente">{l.facturas_pendientes_revision}</span> : '—'}</td>
-              </tr>))}</tbody>
-          </table>
-        </section>
-      ) : (
-        <>
-          {liq && <section className="tarjeta"><h2>Liquidación de IVA (modelo 303)</h2><Liquidacion liq={liq} /></section>}
-          {margen && (
-            <section className="tarjeta">
-              <h2>Margen {p.anio}</h2>
-              <div className="kpis kpis--peq">
-                <div className="kpi"><span className="kpi__valor">{eur(margen.ingresos)}</span><span className="kpi__titulo">Ingresos (base)</span></div>
-                <div className="kpi"><span className="kpi__valor">{eur(margen.gastos)}</span><span className="kpi__titulo">Gastos (base)</span></div>
-                <div className="kpi"><span className="kpi__valor">{eur(margen.margen)}</span><span className="kpi__titulo">Margen · {margen.margen_pct.toLocaleString('es-ES')} %</span></div>
-              </div>
-              <GraficoMargen meses={margen.meses} />
-            </section>
-          )}
-        </>
-      )}
-    </>
+      <table className="tabla clicable">
+        <thead><tr><th>Cliente</th><th className="num">Repercutido</th><th className="num">Soportado</th><th className="num">Resultado</th><th>Situación</th><th>Por revisar</th><th>Plazo</th></tr></thead>
+        <tbody>{(todos || []).map((l) => (
+          <tr key={l.cliente_id} onClick={() => nav(`/clientes/${l.cliente_id}/iva?mes=${mesFin}`)}>
+            <td><strong>{l.razon_social}</strong><br /><small>{l.nif}</small></td><td className="num">{eur(l.total_repercutido)}</td>
+            <td className="num">{eur(l.total_soportado)}</td><td className="num"><strong>{eur(l.resultado)}</strong></td>
+            <td>{l.situacion}</td><td>{l.facturas_pendientes_revision ? <span className="estado estado--pendiente">{l.facturas_pendientes_revision}</span> : '—'}</td>
+            <td><small>{l.plazo_presentacion}</small></td>
+          </tr>))}
+          {todos === null && <tr><td colSpan={7} className="cargando">Cargando…</td></tr>}
+        </tbody>
+      </table>
+    </section>
   )
 }

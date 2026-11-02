@@ -44,6 +44,14 @@ def mes(cliente_id: int, anio: int, mes: int, db: Session = Depends(get_db)):
             "pendientes": cierres.pendientes(db, cliente_id, anio, mes)}
 
 
+@router.get("/meses/{anio}/{mes}/contadores")
+def contadores(cliente_id: int, anio: int, mes: int, db: Session = Depends(get_db)):
+    """Avisos del menú del cliente: qué hay pendiente en cada sección del mes."""
+    _cliente(db, cliente_id)
+    _mes_ok(mes)
+    return cierres.contadores(db, cliente_id, anio, mes)
+
+
 @router.post("/meses/{anio}/{mes}/liquidar")
 def liquidar(cliente_id: int, anio: int, mes: int, datos: LiquidarIn, request: Request,
              db: Session = Depends(get_db), gestor: Usuario = Depends(solo_gestor)):

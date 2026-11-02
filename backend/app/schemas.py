@@ -65,6 +65,8 @@ class ClienteOut(ClienteIn, ORM):
     id: int
     creado_en: datetime | None = None
     pendientes: int = 0
+    estado_mes_anterior: str = "abierto"
+    sin_conciliar: int = 0
 
 
 class AccesoMovilIn(BaseModel):

@@ -11,7 +11,10 @@ import Contabilidad from './gestoria/Contabilidad.jsx'
 import Iva from './gestoria/Iva.jsx'
 import Albaranes from './gestoria/Albaranes.jsx'
 import Tpv from './gestoria/Tpv.jsx'
-import FichaCliente from './gestoria/FichaCliente.jsx'
+import ClienteLayout, { ClienteResumen } from './gestoria/ClienteLayout.jsx'
+import ClienteProveedores from './gestoria/ClienteProveedores.jsx'
+import { ClienteDatos } from './gestoria/Clientes.jsx'
+import { useOutletContext } from 'react-router-dom'
 import MovilApp from './movil/MovilApp.jsx'
 
 const Sesion = createContext(null)
@@ -46,18 +49,40 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Panel />} />
             <Route path="/clientes" element={<Clientes />} />
-            <Route path="/clientes/:id" element={<FichaCliente />} />
-            <Route path="/albaranes" element={<Albaranes />} />
-            <Route path="/ventas-tpv" element={<Tpv />} />
-            <Route path="/compras" element={<Facturas tipo="compras" />} />
-            <Route path="/ventas" element={<Facturas tipo="ventas" />} />
-            <Route path="/conciliacion" element={<Conciliacion />} />
-            <Route path="/contabilidad" element={<Contabilidad />} />
-            <Route path="/iva" element={<Iva />} />
+            <Route path="/clientes/:id" element={<ClienteLayout />}>
+              <Route index element={<ClienteResumen />} />
+              <Route path="compras" element={<FacturasMes tipo="compras" />} />
+              <Route path="albaranes" element={<AlbaranesMes />} />
+              <Route path="ventas" element={<FacturasMes tipo="ventas" />} />
+              <Route path="caja" element={<TpvMes />} />
+              <Route path="proveedores" element={<ClienteProveedores />} />
+              <Route path="banco" element={<Conciliacion />} />
+              <Route path="contabilidad" element={<Contabilidad />} />
+              <Route path="iva" element={<Iva />} />
+              <Route path="datos" element={<ClienteDatos />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
     </Sesion.Provider>
   )
+}
+
+// Secciones del cliente que trabajan con el mes elegido en la cabecera
+function rango(anio, mes) {
+  const m = String(mes).padStart(2, '0')
+  return { desde: `${anio}-${m}-01`, hasta: `${anio}-${m}-${new Date(anio, mes, 0).getDate()}` }
+}
+function FacturasMes({ tipo }) {
+  const { clienteId, anio, mes } = useOutletContext()
+  return <Facturas key={tipo} tipo={tipo} clienteFijo={clienteId} {...rango(anio, mes)} embebido />
+}
+function AlbaranesMes() {
+  const { clienteId, anio, mes } = useOutletContext()
+  return <Albaranes clienteFijo={clienteId} anioFijo={anio} mesFijo={mes} embebido />
+}
+function TpvMes() {
+  const { clienteId, anio, mes } = useOutletContext()
+  return <Tpv clienteFijo={clienteId} anioFijo={anio} mesFijo={mes} embebido />
 }

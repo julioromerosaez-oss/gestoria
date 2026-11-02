@@ -21,7 +21,7 @@ export default function Tpv({ clienteFijo, anioFijo, mesFijo, embebido = false }
   useEffect(cargar, [clienteId, anio, mes])
   useEffect(() => {
     const id = params.get('abrir')
-    if (id) { api(`/api/ventas-tpv/${id}`).then(setAbierto); setParams({}, { replace: true }) }
+    if (id) { api(`/api/ventas-tpv/${id}`).then(setAbierto); const n = new URLSearchParams(params); n.delete('abrir'); setParams(n, { replace: true }) }
   }, [params])
   if (!clienteId) return <><h1>Ventas de caja</h1><p className="vacio tarjeta">Selecciona un cliente arriba.</p></>
   const tot = filas.filter((f) => f.estado !== 'rechazada').reduce((a, f) => ({ base: a.base + f.base_imponible, iva: a.iva + f.cuota_iva, total: a.total + f.total, ef: a.ef + f.cobro_efectivo, tj: a.tj + f.cobro_tarjeta }), { base: 0, iva: 0, total: 0, ef: 0, tj: 0 })

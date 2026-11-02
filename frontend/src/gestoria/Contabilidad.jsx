@@ -3,10 +3,11 @@ import { useOutletContext } from 'react-router-dom'
 import { api, eur, fecha } from '../api'
 import { Modal } from '../comun.jsx'
 
-export default function Contabilidad() {
-  const { clienteId } = useOutletContext()
+export default function Contabilidad({ embebido = true }) {
+  const { clienteId, anio } = useOutletContext()
   const [vista, setVista] = useState('diario')
-  const [ejercicio, setEjercicio] = useState(new Date().getFullYear())
+  const [ejercicio, setEjercicio] = useState(anio || new Date().getFullYear())
+  useEffect(() => { if (anio) setEjercicio(anio) }, [anio])
   const [asientos, setAsientos] = useState([])
   const [saldos, setSaldos] = useState([])
   const [nuevo, setNuevo] = useState(false)
@@ -23,7 +24,7 @@ export default function Contabilidad() {
   return (
     <>
       <div className="cabecera">
-        <h1>Apuntes contables</h1>
+        {embebido ? <span /> : <h1>Apuntes contables</h1>}
         <div className="acciones">
           <div className="pestanas" role="tablist">
             <button role="tab" aria-selected={vista === 'diario'} onClick={() => setVista('diario')}>Libro diario</button>

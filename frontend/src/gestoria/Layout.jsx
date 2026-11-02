@@ -1,50 +1,78 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useMatch, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSesion } from '../App.jsx'
 
-const MENU = [
-  ['/', 'Panel'], ['/clientes', 'Clientes'],
-  ['/compras', 'Facturas de compra'], ['/albaranes', 'Albaranes'], ['/ventas', 'Facturas de venta'], ['/ventas-tpv', 'Caja (TPV)'],
-  ['/conciliacion', 'Conciliación bancaria'], ['/contabilidad', 'Apuntes contables'], ['/iva', 'IVA y margen'],
+/** Secciones de la ficha de un cliente (ruta relativa, texto, clave del contador de avisos). */
+export const SECCIONES = [
+  ['', 'Resumen y qué falta', 'falta'],
+  ['compras', 'Facturas de compra', 'compras'],
+  ['albaranes', 'Albaranes', 'albaranes'],
+  ['ventas', 'Facturas de venta', 'ventas'],
+  ['caja', 'Caja (TPV)', 'tpv'],
+  ['proveedores', 'Proveedores', null],
+  ['banco', 'Conciliación bancaria', 'banco'],
+  ['contabilidad', 'Apuntes contables', null],
+  ['iva', 'IVA y margen', null],
+  ['datos', 'Datos y usuarios', null],
 ]
+
+export function mesDeParams(sp) {
+  const v = sp.get('mes')
+  if (v && /^\d{4}-\d{2}$/.test(v)) return { anio: Number(v.slice(0, 4)), mes: Number(v.slice(5)) }
+  const hoy = new Date()
+  return { anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 }
+}
 
 export default function Layout() {
   const { usuario, salir } = useSesion()
   const [clientes, setClientes] = useState([])
-  const [clienteId, setClienteId] = useState(() => Number(localStorage.getItem('cliente_sel')) || '')
   const recargarClientes = () => api('/api/clientes').then(setClientes)
-
   useEffect(() => { recargarClientes() }, [])
-  useEffect(() => { localStorage.setItem('cliente_sel', clienteId || '') }, [clienteId])
 
+  // ¿Estamos dentro de un cliente? -> su menú aparece en el lateral
+  const enCliente = useMatch('/clientes/:id/*')
+  const clienteId = enCliente ? Number(enCliente.params.id) : null
   const cliente = clientes.find((c) => c.id === clienteId)
+  const [sp] = useSearchParams()
+  const { anio, mes } = mesDeParams(sp)
+  const qs = `?mes=${anio}-${String(mes).padStart(2, '0')}`
+  const loc = useLocation()
+  const [avisos, setAvisos] = useState({})
+  useEffect(() => {
+    if (!clienteId) return
+    api(`/api/clientes/${clienteId}/meses/${anio}/${mes}/contadores`).then(setAvisos).catch(() => setAvisos({}))
+  }, [clienteId, anio, mes, loc.pathname, loc.key])
+
   return (
     <div className="app">
       <aside className="lateral">
         <div className="marca"><img src="/icon.svg" alt="" width="30" height="30" /><span>Gestoría</span></div>
         <nav>
-          {MENU.map(([to, txt]) => (
-            <NavLink key={to} to={to} end={to === '/' || to === '/clientes'}>{txt}</NavLink>
-          ))}
-          {cliente && <NavLink to={`/clientes/${cliente.id}`} className="nav-ficha">Ficha · {cliente.razon_social.split(' (')[0]}</NavLink>}
+          <NavLink to="/" end>Panel</NavLink>
+          <NavLink to="/clientes" end>Clientes</NavLink>
         </nav>
+        {clienteId && (
+          <nav className="menu-cliente" aria-label="Menú del cliente">
+            <div className="menu-cliente__cab" title={cliente?.razon_social}>
+              <strong>{cliente?.razon_social || 'Cliente'}</strong>
+              <small>{cliente?.nif}</small>
+            </div>
+            {SECCIONES.map(([ruta, txt, clave]) => (
+              <NavLink key={ruta} to={`/clientes/${clienteId}${ruta ? '/' + ruta : ''}${qs}`} end>
+                <span>{txt}</span>
+                {clave && avisos[clave] > 0 && <span className={`insignia ${clave === 'falta' && avisos.bloquean ? 'insignia--fuerte' : ''}`}>{avisos[clave]}</span>}
+              </NavLink>
+            ))}
+          </nav>
+        )}
         <div className="lateral__pie">
           <span>{usuario.nombre}</span>
           <button className="btn btn--enlace" onClick={salir}>Cerrar sesión</button>
         </div>
       </aside>
       <main className="principal">
-        <div className="barra-cliente">
-          <label>Cliente
-            <select value={clienteId} onChange={(e) => setClienteId(Number(e.target.value) || '')}>
-              <option value="">Todos los clientes</option>
-              {clientes.map((c) => <option key={c.id} value={c.id}>{c.razon_social} · {c.nif}</option>)}
-            </select>
-          </label>
-          {cliente?.pendientes > 0 && <span className="aviso">{cliente.pendientes} subidas pendientes de revisar</span>}
-        </div>
-        <Outlet context={{ clientes, clienteId, setClienteId, cliente, recargarClientes }} />
+        <Outlet context={{ clientes, recargarClientes }} />
       </main>
     </div>
   )
