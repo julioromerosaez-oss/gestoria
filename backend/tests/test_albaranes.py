@@ -90,7 +90,8 @@ def test_venta_detectada_por_emisor(c):
     import io
     img = Image.new("RGB", (1240, 900), "white")
     d = ImageDraw.Draw(img)
-    f = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+    from generar_docs import fuente
+    f = fuente("normal", 30)
     for i, t in enumerate(["Carlos Martín Ruiz - Fontanería", "NIF: 44556677L", "FACTURA Nº F2026-0042",
                            "Fecha: 20/10/2026", "Cliente: Hostelería Plaza SL  CIF B87654323",
                            "Base imponible 500,00", "IVA 21% 105,00", "TOTAL 605,00 €"]):
