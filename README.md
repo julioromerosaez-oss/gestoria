@@ -107,7 +107,7 @@ Las tres migraciones de `supabase/migrations/` **ya están aplicadas** en el pro
    alter role gestoria_api with login password 'UNA_CONTRASEÑA_LARGA_Y_ALEATORIA';
    ```
 2. **SSL de la base de datos**: en *Database → Settings → SSL Configuration* descarga el certificado a `certs/supabase-ca.crt`. La API ya exige TLS verificado por su lado; activar además **Enforce SSL** es recomendable, pero afecta a todo el proyecto: comprueba antes que Genia también conecta con SSL.
-3. `cp .env.example .env` y rellena `SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, el `DATABASE_URL` (host del *Session pooler*, puerto 5432) y tu `DOMINIO`.
+3. `cp .env.example .env` y rellena `SECRET_KEY`, `SUPABASE_SECRET_KEY` (una clave `sb_secret_` creada solo para la gestoría), el `DATABASE_URL` (host del *Session pooler*, puerto 5432) y tu `DOMINIO`.
 4. **Certificado TLS** del dominio con Let's Encrypt (`certbot certonly --webroot -w ./certbot-www -d tu-dominio`), copiado a `certs/fullchain.pem` y `certs/privkey.pem`.
 5. `docker compose up -d --build`
 6. **Primer gestor** (la contraseña se pide por teclado):

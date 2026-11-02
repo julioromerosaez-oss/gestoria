@@ -51,8 +51,7 @@ def validar(data: bytes) -> str:
 
 
 def _headers() -> dict:
-    return {"apikey": config.SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {config.SUPABASE_SERVICE_ROLE_KEY}"}
+    return config.cabeceras_supabase()
 
 
 def guardar(cliente_id: int, data: bytes) -> str:
