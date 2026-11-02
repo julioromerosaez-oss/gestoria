@@ -118,6 +118,8 @@ Las tres migraciones de `supabase/migrations/` **ya están aplicadas** en el pro
 
 ## Desarrollo local (sin Supabase)
 
+Requisitos: **Python 3.12+**, **Node 22+** (Vite 8 necesita Node 20.19+ o 22.12+) y **Tesseract** con el idioma español.
+
 ```bash
 # backend
 cd backend && pip install -r requirements.txt
