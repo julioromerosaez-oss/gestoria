@@ -303,3 +303,56 @@ label.check input { width: auto; }
   .lateral, .barra-cliente, .botonera, .modal header button { display: none !important; }
   .modal-fondo { position: static; background: none; } .modal { width: auto !important; max-height: none; }
 }
+
+/* ---------- Navegación por cliente ---------- */
+.lateral { overflow-y: auto; }
+.lateral nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.menu-cliente { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.15); display: grid; gap: 2px; }
+.menu-cliente__cab { padding: 4px 12px 10px; display: grid; gap: 2px; color: #fff; }
+.menu-cliente__cab strong { font-size: 13px; line-height: 1.3; }
+.menu-cliente__cab small { color: #9fb3c8; font-size: 12px; }
+.menu-cliente a { font-size: 13.5px; padding: 7px 12px 7px 20px !important; position: relative; }
+.menu-cliente a::before { content: ""; position: absolute; left: 10px; top: 50%; width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.3); }
+.menu-cliente a.active::before { background: #fff; }
+.insignia { background: rgba(255,255,255,.18); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 7px; min-width: 20px; text-align: center; }
+.insignia--fuerte { background: #e8a33a; color: #2b1d00; }
+.cab-cliente { margin-bottom: 18px; }
+.cab-cliente__fila { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.cab-cliente h1 { margin: 2px 0 2px; }
+.cab-cliente .ayuda { margin: 0; }
+.cab-cliente__mes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding: 10px 14px; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); }
+.cab-cliente__mes .selector-mes { margin: 0; }
+.migas { font-size: 13px; color: var(--texto-3); }
+.migas a { color: var(--primario-2); text-decoration: none; }
+.migas a:hover { text-decoration: underline; }
+.cambiar-cliente { position: relative; }
+.cambiar-cliente__panel { position: absolute; right: 0; top: calc(100% + 6px); width: 340px; background: #fff; border: 1px solid var(--borde); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 10px; z-index: 15; }
+.cambiar-cliente__panel ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 320px; overflow: auto; }
+.cambiar-cliente__panel li button { width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 8px; cursor: pointer; display: grid; gap: 2px; }
+.cambiar-cliente__panel li button:hover { background: #f4f1ea; }
+.cambiar-cliente__panel small { color: var(--texto-3); }
+.flecha { color: var(--texto-3); font-size: 20px; line-height: 1; }
+.ayuda-tenue { color: var(--texto-3); }
+.lista-docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lista-docs button { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--borde); background: #fff; border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.lista-docs button:hover { border-color: var(--primario-2); }
+.lista-docs button > span:first-child { flex: 1; display: grid; gap: 2px; }
+.lista-docs small { color: var(--texto-2); }
+.roles--columna { grid-template-columns: 1fr; }
+.nuevo-usuario { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borde); }
+@media (max-width: 900px) { .cab-cliente__fila { flex-direction: column; } }
+
+/* ---------- Área web de la administración del cliente ---------- */
+.app--cliente .lateral { background: #1f3b2d; }
+.marca--empresa { align-items: flex-start; }
+.marca--empresa > span:last-child { display: grid; gap: 2px; }
+.marca--empresa strong { font-size: 15px; line-height: 1.25; }
+.marca--empresa small { color: #a9c2b4; font-weight: 400; font-size: 12px; }
+.marca__inicial { width: 34px; height: 34px; flex: none; border-radius: 9px; background: rgba(255,255,255,.16); display: grid; place-items: center; font-weight: 700; font-size: 17px; color: #fff; }
+.app--cliente .lateral nav a { color: #cfe0d6; }
+.app--cliente .lateral nav a.active { background: rgba(255,255,255,.16); color: #fff; }
+.lateral__rol { color: #9fb3c8; font-size: 12px; }
+.ficha { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+.ficha dt { color: var(--texto-2); }
+.ficha dd { margin: 0; font-variant-numeric: tabular-nums; }
+.grafico { margin-bottom: 26px; }

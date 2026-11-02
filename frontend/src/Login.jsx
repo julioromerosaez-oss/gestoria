@@ -16,8 +16,8 @@ export default function Login({ movil, onLogin }) {
   return (
     <div className={`login ${movil ? 'login--movil' : ''}`}>
       <form className="login__caja" onSubmit={enviar}>
-        <div className="marca"><img src="/icon.svg" alt="" width="36" height="36" /><span>{movil ? 'Mi Gestoría' : 'Gestoría · Panel'}</span></div>
-        <h1>{movil ? 'Accede a tu área' : 'Acceso del equipo'}</h1>
+        <div className="marca"><img src="/icon.svg" alt="" width="36" height="36" /><span>{movil ? 'Mi Gestoría' : 'Gestoría'}</span></div>
+        <h1>{movil ? 'Accede a tu área' : 'Iniciar sesión'}</h1>
         <label>Email<input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         <label>Contraseña<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <p className="error" role="alert">{error}</p>}

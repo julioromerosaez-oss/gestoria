@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -6,7 +8,8 @@ from sqlalchemy.orm import Session
 from .. import config
 from ..auth import auditar, crear_usuario_supabase, hash_password, solo_gestor
 from ..db import get_db
-from ..models import ROLES_CLIENTE, Cliente, EstadoFactura, FacturaCompra, FacturaVenta, Usuario
+from ..models import (ROLES_CLIENTE, Albaran, CierreMes, Cliente, EstadoAlbaran, EstadoFactura, FacturaCompra,
+                      FacturaVenta, MovimientoBanco, Usuario, VentaTPV)
 from ..schemas import AccesoMovilIn, ClienteIn, ClienteOut, UsuarioOut
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"], dependencies=[Depends(solo_gestor)])
@@ -14,9 +17,10 @@ router = APIRouter(prefix="/api/clientes", tags=["clientes"], dependencies=[Depe
 
 def _pendientes(db: Session) -> dict[int, int]:
     cuenta: dict[int, int] = {}
-    for modelo in (FacturaCompra, FacturaVenta):
+    for modelo, est in ((FacturaCompra, EstadoFactura.pendiente), (FacturaVenta, EstadoFactura.pendiente),
+                        (VentaTPV, EstadoFactura.pendiente), (Albaran, EstadoAlbaran.pendiente)):
         for cid, n in db.execute(select(modelo.cliente_id, func.count())
-                                 .where(modelo.estado == EstadoFactura.pendiente)
+                                 .where(modelo.estado == est)
                                  .group_by(modelo.cliente_id)):
             cuenta[cid] = cuenta.get(cid, 0) + n
     return cuenta
@@ -29,8 +33,16 @@ def listar(q: str | None = None, db: Session = Depends(get_db)):
         patron = f"%{q.strip()}%"
         consulta = consulta.where(Cliente.razon_social.ilike(patron) | Cliente.nif.ilike(patron))
     pend = _pendientes(db)
-    return [ClienteOut.model_validate(c).model_copy(update={"pendientes": pend.get(c.id, 0)})
-            for c in db.scalars(consulta)]
+    hoy = date.today()
+    anterior = (hoy.year - (hoy.month == 1), (hoy.month - 2) % 12 + 1)
+    estados = {c.cliente_id: c.estado.value for c in db.scalars(select(CierreMes).where(
+        CierreMes.anio == anterior[0], CierreMes.mes == anterior[1]))}
+    sin_conciliar: dict[int, int] = dict(db.execute(
+        select(MovimientoBanco.cliente_id, func.count()).where(MovimientoBanco.conciliado.is_(False))
+        .group_by(MovimientoBanco.cliente_id)).all())
+    return [ClienteOut.model_validate(c).model_copy(update={
+        "pendientes": pend.get(c.id, 0), "estado_mes_anterior": estados.get(c.id, "abierto"),
+        "sin_conciliar": sin_conciliar.get(c.id, 0)}) for c in db.scalars(consulta)]
 
 
 @router.post("", response_model=ClienteOut, status_code=201)

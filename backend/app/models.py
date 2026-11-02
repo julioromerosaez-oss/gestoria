@@ -28,9 +28,10 @@ class Rol(str, enum.Enum):
     cliente_admin = "cliente_admin"      # administración del cliente: ve todo su mes, reclama, cierra
     cliente_compras = "cliente_compras"  # sube albaranes y facturas de proveedor
     cliente_ventas = "cliente_ventas"    # sube los cierres Z del TPV (y facturas de venta)
+    cliente_compras_ventas = "cliente_compras_ventas"  # las dos cosas: compras y caja desde el móvil
 
 
-ROLES_CLIENTE = (Rol.cliente_admin, Rol.cliente_compras, Rol.cliente_ventas)
+ROLES_CLIENTE = (Rol.cliente_admin, Rol.cliente_compras, Rol.cliente_ventas, Rol.cliente_compras_ventas)
 
 
 class TipoCliente(str, enum.Enum):

@@ -34,7 +34,7 @@ export default function Albaranes({ clienteFijo, anioFijo, mesFijo, embebido = f
   useEffect(() => { cargar() }, [clienteId, anio, mes])
   useEffect(() => {
     const id = params.get('abrir')
-    if (id) { api(`/api/albaranes/${id}`).then(setAbierto); setParams({}, { replace: true }) }
+    if (id) { api(`/api/albaranes/${id}`).then(setAbierto); const n = new URLSearchParams(params); n.delete('abrir'); setParams(n, { replace: true }) }
   }, [params])
 
   if (!clienteId) return <><h1>Albaranes</h1><p className="vacio tarjeta">Selecciona un cliente arriba.</p></>

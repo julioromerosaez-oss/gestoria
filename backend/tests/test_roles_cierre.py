@@ -41,6 +41,20 @@ def test_permisos_por_rol(c):
     assert c.get(f"/api/movil/facturas/tpv/{tid}/imagen", headers=admin).status_code == 200
 
 
+def test_rol_compras_y_ventas(c):
+    """Una sola persona sube compras y cierres de caja; sigue sin ver IVA ni el mes."""
+    cv = tok(c, "cv@x.es", "cli123")
+    assert subir(c, cv, "albaran_foto.jpg").json()["tipo"] == "albaran"
+    assert subir(c, cv, "cierre_z_foto.jpg", ruta="/api/movil/cierres-z").status_code == 201
+    for ruta in ("/api/movil/iva", "/api/movil/margen", "/api/movil/meses/2026/10"):
+        assert c.get(ruta, headers=cv).status_code == 403
+    assert {d["tipo"] for d in c.get("/api/movil/facturas", headers=cv).json()} == {"albaran", "tpv"}
+    # no ve lo que suben otros usuarios del mismo negocio
+    compras = tok(c, "compras@x.es", "cli123")
+    assert subir(c, compras, "factura_foto.jpg", tipo="compra").status_code == 201
+    assert "compra" not in {d["tipo"] for d in c.get("/api/movil/facturas", headers=cv).json()}
+
+
 def test_mes_completo_cierre_y_liquidacion(c):
     g = tok(c, "g@x.es", "gestor123")
     admin, compras, ventas = (tok(c, e, "cli123") for e in ("u1@x.es", "compras@x.es", "ventas@x.es"))
@@ -98,3 +112,16 @@ def test_mes_completo_cierre_y_liquidacion(c):
     # vista por proveedor
     provs = {p["proveedor_nif"]: p for p in c.get("/api/clientes/1/proveedores?anio=2026", headers=g).json()}
     assert provs["A28476505"]["albaranes_sin_factura"] == 1 and provs["B87654323"]["total"] == 217.8
+
+
+def test_area_web_de_administracion(c):
+    """La administración del cliente ve sus albaranes por proveedor y sus proveedores; compras no, y nadie ve otras empresas."""
+    admin, compras, otro = (tok(c, e, "cli123") for e in ("u1@x.es", "compras@x.es", "u2@x.es"))
+    subir(c, compras, "albaran_foto.jpg")
+    g = c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=admin).json()
+    assert len(g) == 1 and g[0]["proveedor_nif"] == "A28476505" and len(g[0]["filas"]) == 1
+    d = c.get(f"/api/movil/proveedores/documentos?anio=2026&clave={g[0]['clave']}", headers=admin).json()
+    assert len(d["albaranes"]) == 1
+    assert c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=compras).status_code == 403
+    assert c.get("/api/movil/albaranes/resumen?anio=2026&mes=10", headers=otro).json() == []   # otra empresa: nada
+    assert c.get("/api/clientes", headers=admin).status_code == 403                           # no ve la lista de empresas

@@ -132,16 +132,17 @@ def pendientes(db: Session, cliente_id: int, anio: int, mes: int, para_cliente: 
                     "importe": float(importe) if importe is not None else None, "ref": ref})
 
     # 1) documentos sin revisar
-    for Modelo, nombre, ruta, est in ((FacturaCompra, "facturas de compra", "compras", EstadoFactura.pendiente),
-                                      (FacturaVenta, "facturas de venta", "ventas", EstadoFactura.pendiente),
-                                      (VentaTPV, "cierres de caja", "ventas-tpv", EstadoFactura.pendiente),
-                                      (Albaran, "albaranes", "albaranes", EstadoAlbaran.pendiente)):
+    for Modelo, nombre, ruta, est in ((FacturaCompra, ("factura de compra", "facturas de compra"), "compras", EstadoFactura.pendiente),
+                                      (FacturaVenta, ("factura de venta", "facturas de venta"), "ventas", EstadoFactura.pendiente),
+                                      (VentaTPV, ("cierre de caja", "cierres de caja"), "ventas-tpv", EstadoFactura.pendiente),
+                                      (Albaran, ("albarán", "albaranes"), "albaranes", EstadoAlbaran.pendiente)):
         ids = db.scalars(select(Modelo.id).where(
             Modelo.cliente_id == cliente_id, Modelo.estado == est,
             (Modelo.fecha.is_(None)) | ((Modelo.fecha >= ini) & (Modelo.fecha < fin)))).all()
         if ids:
-            item("gestoria", "bloquea", f"{len(ids)} {nombre} " + ("en revisión por la gestoría" if para_cliente
-                                                                     else "pendientes de revisar"),
+            uno = len(ids) == 1
+            item("gestoria", "bloquea", f"{len(ids)} {nombre[0] if uno else nombre[1]} " + (
+                 "en revisión por la gestoría" if para_cliente else ("pendiente" if uno else "pendientes") + " de revisar"),
                  ref={"tipo": ruta, "ids": list(ids)})
     # 2) documentos rechazados: hay que volver a subirlos
     for Modelo, nombre, est in ((FacturaCompra, "Factura", EstadoFactura.rechazada),
@@ -333,3 +334,23 @@ def meses_del_anio(db: Session, cliente_id: int, anio: int) -> list[dict]:
     hoy = date.today()
     return [{"mes": m, "nombre": NOMBRES_MES[m - 1], "estado": est.get(m, "abierto"),
              "futuro": date(anio, m, 1) > hoy} for m in range(1, 13)]
+
+
+def contadores(db: Session, cliente_id: int, anio: int, mes: int) -> dict:
+    ini, fin = rango(anio, mes)
+
+    def n(Modelo, *cond):
+        return len(db.scalars(select(Modelo.id).where(Modelo.cliente_id == cliente_id, *cond)).all())
+
+    del_mes = lambda M: (M.fecha.is_(None)) | ((M.fecha >= ini) & (M.fecha < fin))  # noqa: E731
+    falta = pendientes(db, cliente_id, anio, mes)
+    return {
+        "compras": n(FacturaCompra, FacturaCompra.estado == EstadoFactura.pendiente, del_mes(FacturaCompra)),
+        "ventas": n(FacturaVenta, FacturaVenta.estado == EstadoFactura.pendiente, del_mes(FacturaVenta)),
+        "albaranes": n(Albaran, Albaran.estado == EstadoAlbaran.pendiente, del_mes(Albaran))
+        + sum(1 for g in srv_alb.resumen_mes(db, cliente_id, anio, mes) if g["situacion"] != "cuadra"),
+        "tpv": n(VentaTPV, VentaTPV.estado == EstadoFactura.pendiente, del_mes(VentaTPV)),
+        "banco": n(MovimientoBanco, MovimientoBanco.conciliado.is_(False)),
+        "falta": len(falta),
+        "bloquean": sum(1 for p in falta if p["gravedad"] == "bloquea"),
+    }

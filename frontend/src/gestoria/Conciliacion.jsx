@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { api, eur, fecha } from '../api'
 
-export default function Conciliacion() {
+export default function Conciliacion({ embebido = true }) {
   const { clienteId } = useOutletContext()
   const [movs, setMovs] = useState([])
   const [verTodos, setVerTodos] = useState(false)
@@ -40,7 +40,7 @@ export default function Conciliacion() {
   return (
     <>
       <div className="cabecera">
-        <h1>Conciliación bancaria</h1>
+        {embebido ? <span /> : <h1>Conciliación bancaria</h1>}
         <div className="acciones">
           <label className="check"><input type="checkbox" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} /> Ver también conciliados</label>
           <label className="btn btn--primario">Importar extracto CSV<input type="file" accept=".csv,text/csv" hidden onChange={importar} /></label>

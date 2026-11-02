@@ -29,7 +29,7 @@ export default function Facturas({ tipo, clienteFijo, desde, hasta, embebido = f
   useEffect(() => { cargar() }, [tipo, clienteId, estado, desde, hasta])
   useEffect(() => {
     const id = params.get('abrir')
-    if (id) { api(`/api/${tipo}/${id}`).then(setAbierta); setParams({}, { replace: true }) }
+    if (id) { api(`/api/${tipo}/${id}`).then(setAbierta); const n = new URLSearchParams(params); n.delete('abrir'); setParams(n, { replace: true }) }
   }, [params])
 
   const nombreCliente = useMemo(() => Object.fromEntries(clientes.map((c) => [c.id, c.razon_social])), [clientes])
@@ -91,6 +91,11 @@ function Detalle({ tipo, inicial, onCerrar, onCambio }) {
   const [error, setError] = useState('')
   const [ok, setOk] = useState('')
   useEffect(() => { setF(inicial); setError(''); setOk('') }, [inicial])
+  useEffect(() => {
+    const esc = (e) => e.key === 'Escape' && onCerrar()
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onCerrar])
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const bloqueada = f.estado === 'contabilizada'
 

@@ -6,8 +6,22 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 D = Path(__file__).parent / "docs"
 D.mkdir(exist_ok=True)
-F = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FB = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# Fuentes de cada sistema (Linux, Windows, macOS); se usa la primera que exista
+_FUENTES = {
+    "normal": ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "C:/Windows/Fonts/arial.ttf",
+               "/System/Library/Fonts/Supplemental/Arial.ttf", "/Library/Fonts/Arial.ttf"],
+    "negrita": ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "C:/Windows/Fonts/arialbd.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf"],
+    "mono": ["/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "C:/Windows/Fonts/consola.ttf",
+             "C:/Windows/Fonts/cour.ttf", "/System/Library/Fonts/Menlo.ttc", "/Library/Fonts/Courier New.ttf"],
+}
+
+
+def fuente(estilo: str, tam: int):
+    for ruta in _FUENTES[estilo]:
+        if Path(ruta).exists():
+            return ImageFont.truetype(ruta, tam)
+    return ImageFont.load_default(size=tam)  # Pillow >= 10.1
 
 
 def foto(lineas, nombre, girar=0.0, ruido=True):
@@ -15,7 +29,7 @@ def foto(lineas, nombre, girar=0.0, ruido=True):
     d = ImageDraw.Draw(img)
     y = 90
     for texto, tam, negrita in lineas:
-        d.text((90, y), texto, fill=(25, 25, 25), font=ImageFont.truetype(FB if negrita else F, tam))
+        d.text((90, y), texto, fill=(25, 25, 25), font=fuente("negrita" if negrita else "normal", tam))
         y += int(tam * 1.7)
     if girar:
         img = img.rotate(girar, expand=True, fillcolor=(90, 90, 90))
@@ -59,7 +73,7 @@ def generar():
     # ticket de cierre Z (estrecho, como sale de la impresora térmica)
     z = Image.new("RGB", (620, 1500), (252, 252, 250))
     d = ImageDraw.Draw(z)
-    fm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 24)
+    fm = fuente("mono", 24)
     for i, t in enumerate(["   BAR RESTAURANTE LA PLAZA", "   CIF B65432106", "", "    INFORME Z  Nº 0347",
                            "Fecha: 18/10/2026   23:41", "--------------------------------",
                            "Nº tickets:            86", "--------------------------------",

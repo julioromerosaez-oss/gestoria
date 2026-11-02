@@ -4,10 +4,10 @@ Aplicación para una gestoría y sus clientes, con cuatro roles:
 
 | Rol | Dónde | Qué hace |
 |---|---|---|
-| **Gestoría** | Panel web (`/`) | Lista de clientes → **ficha del cliente por mes o por proveedor**: facturas de compra y venta, albaranes y su cuadre con la factura mensual, caja (TPV), IVA, **qué falta** del cliente y de sus proveedores, conciliación bancaria y **liquidación mensual** (cierre contable + informe). |
-| **Cliente · administración** | App (`/movil`, también en escritorio) | Por mes: ingresos y gastos **con y sin IVA**, IVA del mes y del trimestre, **qué reclamar a proveedores** y qué falta, sus proveedores, y el **cierre mensual** (bloquea el mes). |
-| **Cliente · compras** | App móvil | Sube **albaranes y facturas de proveedor** (foto o PDF). Ve solo lo que ha subido. |
-| **Cliente · ventas** | App móvil | Sube la **foto del cierre Z del TPV** cada día (restaurante, tienda). Ve solo sus cierres. |
+| **Gestoría** | Web (`/`) | Menú principal: **Panel** (clientes que necesitan atención, documentos por revisar, campaña de IVA) y **Clientes**. Al abrir un cliente aparece su menú: resumen y qué falta, facturas de compra y venta, albaranes (cuadre con la factura mensual), caja (TPV), proveedores, conciliación bancaria, apuntes contables, IVA y margen, datos y usuarios. El mes de trabajo se elige en la cabecera del cliente y se mantiene al cambiar de sección o de cliente; desde ahí se **liquida** o reabre el mes. |
+| **Cliente · administración** | Web en el ordenador (`/`) | Ve **solo su empresa** (su nombre en la cabecera): resumen del mes con y sin IVA, **qué reclamar a proveedores**, qué falta, sus facturas, albaranes, caja y proveedores (solo lectura, con la foto de cada documento), IVA y margen, y el **cierre mensual** (bloquea el mes). No usa la versión móvil. |
+| **Cliente · compras** | App móvil (`/movil`) | Operativa diaria: sube **albaranes y facturas de proveedor** (foto o PDF). Ve solo lo que ha subido. |
+| **Cliente · ventas** | App móvil (`/movil`) | Operativa diaria: sube la **foto del cierre Z del TPV** cada día y las **facturas de venta**. Ve solo lo que ha subido. |
 
 ### Lectura automática de documentos (OCR local, sin IA)
 
@@ -78,7 +78,7 @@ Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL 
 ### Capa API (defensa en profundidad)
 
 - **Autenticación propia**: contraseñas con PBKDF2-SHA256 (310.000 iteraciones), JWT HS256 firmado con `SECRET_KEY` (≥ 32 caracteres, obligatoria en producción) con emisor, audiencia y caducidad (8 h). Bloqueo de la cuenta 15 minutos tras 5 fallos y el mismo mensaje exista o no el email. *(El código conserva un modo `AUTH_MODO=supabase` por si en el futuro la gestoría tiene su propio proyecto.)*
-- **Roles**: el rol (`gestor`, `cliente_admin`, `cliente_compras`, `cliente_ventas`) sale de la tabla `usuarios` en cada petición, no del token. Compras no puede ver IVA, resumen ni cierres de caja; ventas no puede subir facturas de proveedor; ninguno de los dos ve lo que han subido otros usuarios.
+- **Roles**: el rol (`gestor`, `cliente_admin`, `cliente_compras`, `cliente_ventas`, `cliente_compras_ventas`) sale de la tabla `usuarios` en cada petición, no del token. Compras no puede ver IVA, resumen ni cierres de caja; ventas no puede subir facturas de proveedor; ninguno de los dos ve lo que han subido otros usuarios.
 - **Aislamiento entre clientes**: en `/api/movil/*` el `cliente_id` siempre sale del usuario autenticado. Si alguien pide un ID de otro cliente recibe 404.
 - **Subidas**: el tipo se detecta por los *magic bytes* (JPG, PNG, WEBP, HEIC, PDF), el nombre lo pone el servidor, hay límite de tamaño y se protege contra *path traversal*.
 - **Fotos**: van a un bucket **privado**. El navegador nunca recibe una URL pública: la API comprueba permisos y entrega el fichero.
@@ -102,21 +102,36 @@ La gestoría comparte proyecto con otra aplicación (Genia), así que está **ai
 
 Las tres migraciones de `supabase/migrations/` **ya están aplicadas** en el proyecto Genia (esquema, tablas, permisos, RLS, rol `gestoria_api` todavía sin login, bucket, albaranes, roles, caja TPV y cierres de mes).
 
-1. **Activa el rol de la API** con una contraseña larga, en *SQL Editor* de Supabase:
+**Antes de empezar (en Supabase y en tu proveedor de dominio):**
+
+1. **Activa el rol de la API** en *SQL Editor* con una contraseña larga (≥ 16 caracteres, guárdala en tu gestor de contraseñas):
    ```sql
    alter role gestoria_api with login password 'UNA_CONTRASEÑA_LARGA_Y_ALEATORIA';
    ```
-2. **SSL de la base de datos**: en *Database → Settings → SSL Configuration* descarga el certificado a `certs/supabase-ca.crt`. La API ya exige TLS verificado por su lado; activar además **Enforce SSL** es recomendable, pero afecta a todo el proyecto: comprueba antes que Genia también conecta con SSL.
-3. `cp .env.example .env` y rellena `SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, el `DATABASE_URL` (host del *Session pooler*, puerto 5432) y tu `DOMINIO`.
-4. **Certificado TLS** del dominio con Let's Encrypt (`certbot certonly --webroot -w ./certbot-www -d tu-dominio`), copiado a `certs/fullchain.pem` y `certs/privkey.pem`.
-5. `docker compose up -d --build`
-6. **Primer gestor** (la contraseña se pide por teclado):
-   ```bash
-   docker compose exec api python -m app.crear_gestor tu@gestoria.es "Tu Nombre"
-   ```
-   Desde ahí, los usuarios de cada cliente (administración, compras, ventas) se crean en **Clientes → Usuarios**.
+2. **Clave secreta solo para la gestoría**: *Settings → API Keys → Publishable and secret API keys* → nueva clave secreta `gestoria_backend` (empieza por `sb_secret_`).
+3. **Host del pooler**: *Connect → Session pooler*, copia el host (`aws-…pooler.supabase.com`, puerto 5432).
+4. **Certificado SSL de la base de datos**: *Database → Settings → SSL Configuration → Download certificate*.
+5. **DNS**: registro tipo **A** de tu dominio (p. ej. `gestoria.tudominio.es`) hacia la IP del servidor.
+
+**En el servidor (Ubuntu 22.04/24.04):**
+
+```bash
+git clone https://github.com/julioromerosaez-oss/gestoria.git && cd gestoria
+mkdir -p certs && nano certs/supabase-ca.crt        # pega el certificado descargado en el paso 4 (o súbelo con scp)
+sudo bash scripts/instalar-servidor.sh
+```
+
+El script instala Docker y certbot, deja el cortafuegos solo con 22/80/443, te pide los datos de Supabase sin mostrarlos y crea el `.env` (permisos 600), saca el certificado HTTPS con renovación automática, construye y arranca la aplicación y crea tu primer usuario de gestor. Al terminar:
+
+- Gestoría y administración de los clientes: `https://tu-dominio`
+- App móvil de compras y ventas: `https://tu-dominio/movil`
+- Logs: `docker compose logs -f` · Actualizar: `git pull && docker compose up -d --build`
+
+Después, en la aplicación: **Clientes → Nuevo cliente** y, en el cliente, **Datos y usuarios → Añadir usuario** (administración, compras, ventas).
 
 ## Desarrollo local (sin Supabase)
+
+Requisitos: **Python 3.12+**, **Node 22+** (Vite 8 necesita Node 20.19+ o 22.12+) y **Tesseract** con el idioma español.
 
 ```bash
 # backend
@@ -133,12 +148,13 @@ Usuarios de demo (restaurante con meses liquidados, septiembre cerrado y octubre
 
 | Rol | Usuario | Contraseña |
 |---|---|---|
-| Gestoría | gestor@gestoria.local | Gestor.2026 |
-| Administración (restaurante) | admin@cliente.local | Cliente.2026 |
-| Compras (restaurante) | compras@cliente.local | Cliente.2026 |
-| Ventas / caja (restaurante) | ventas@cliente.local | Cliente.2026 |
+| Gestoría (http://localhost:8000) | roberto@complutumasesores.com | Rober2026 |
+| Administración del restaurante (web, http://localhost:8000) | patrilucre1953@gmail.com | Patri2026 |
+| Compras y ventas del restaurante (móvil, http://localhost:8000/movil) | joselucre1953@gmail.com | Javi2026 |
 
-Tests: `cd backend && pytest` (21 tests). Cubren seguridad (401/403, token manipulado, fuerza bruta, cabeceras, ficheros falsos, aislamiento entre clientes y entre usuarios, permisos por rol), la lectura de fotos reales generadas (factura, albarán torcido, PDF, cierre Z), el cuadre de albaranes con la factura mensual, el cierre y bloqueo del mes, la liquidación con sus asientos y el flujo contable completo.
+Estas claves son solo para la base de demo local. En el servidor los usuarios se crean desde la pantalla del cliente con contraseñas distintas.
+
+Tests: `cd backend && pytest` (22 tests). Cubren seguridad (401/403, token manipulado, fuerza bruta, cabeceras, ficheros falsos, aislamiento entre clientes y entre usuarios, permisos por rol), la lectura de fotos reales generadas (factura, albarán torcido, PDF, cierre Z), el cuadre de albaranes con la factura mensual, el cierre y bloqueo del mes, la liquidación con sus asientos y el flujo contable completo.
 
 ## Contabilidad que genera
 

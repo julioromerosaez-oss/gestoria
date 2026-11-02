@@ -161,7 +161,7 @@ def _ultimas_pendientes(db: Session, n: int = 10) -> list[dict]:
                                           (Albaran, "albaran", "albaranes", EstadoAlbaran.pendiente),
                                           (VentaTPV, "tpv", "ventas-tpv", EstadoFactura.pendiente)):
         for f in db.scalars(select(Modelo).where(Modelo.estado == pendiente).order_by(Modelo.id.desc()).limit(n)):
-            filas.append({"id": f.id, "tipo": tipo, "ruta": ruta, "cliente_id": f.cliente_id,
+            filas.append({"id": f.id, "tipo": tipo, "ruta": ruta, "cliente_id": f.cliente_id, "fecha": f.fecha,
                           "cliente": f.cliente.razon_social, "creado_en": f.creado_en, "notas": f.notas,
                           "tercero": getattr(f, "proveedor_nombre", None) or getattr(f, "destinatario_nombre", None)
                           or (f"Cierre Z {f.numero_z or ''}" if tipo == "tpv" else None),
