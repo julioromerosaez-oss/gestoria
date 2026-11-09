@@ -115,6 +115,8 @@ Las cuatro migraciones de `supabase/migrations/` **ya están aplicadas** en el p
 
 **En el servidor (Ubuntu 22.04/24.04):**
 
+> **Oracle Cloud (Always Free, ARM):** la app funciona igual en ARM (Ampere A1). Crea la instancia con *Ubuntu 24.04* y forma *VM.Standard.A1.Flex* (2 OCPU, 12 GB) y, en la *Security List* de la red (VCN), añade reglas de entrada TCP para los puertos **80** y **443** desde `0.0.0.0/0`. El script detecta Oracle y abre esos puertos en su cortafuegos `iptables` (no usa ufw, que choca con él).
+
 ```bash
 git clone https://github.com/julioromerosaez-oss/gestoria.git && cd gestoria
 mkdir -p certs && nano certs/supabase-ca.crt        # pega el certificado descargado en el paso 4 (o súbelo con scp)

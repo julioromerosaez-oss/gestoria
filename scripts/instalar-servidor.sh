@@ -7,7 +7,8 @@
 #
 #  Qué hace:
 #    1. Instala Docker, certbot y actualizaciones automáticas de seguridad.
-#    2. Cortafuegos: solo SSH (22), HTTP (80) y HTTPS (443).
+#    2. Cortafuegos: solo SSH (22), HTTP (80) y HTTPS (443). En Oracle Cloud usa
+#       sus reglas iptables en lugar de ufw.
 #    3. Pide los datos de Supabase SIN mostrarlos ni guardarlos en el historial
 #       y crea el .env (permisos 600).
 #    4. Pide el certificado HTTPS de Let's Encrypt y deja la renovación automática.
@@ -34,18 +35,38 @@ DIR="$(pwd)"
 paso "1/6 Paquetes del sistema"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq docker.io docker-compose-v2 certbot ufw unattended-upgrades curl openssl >/dev/null
+# Oracle Cloud trae su propio cortafuegos (iptables-persistent) y ufw entra en conflicto con él
+ORACLE=0
+grep -qs "InstanceServices" /etc/iptables/rules.v4 && ORACLE=1
+PAQUETES="docker.io docker-compose-v2 certbot unattended-upgrades curl openssl"
+[[ $ORACLE -eq 1 ]] || PAQUETES="$PAQUETES ufw"
+apt-get install -y -qq $PAQUETES >/dev/null
 systemctl enable --now docker >/dev/null
 dpkg-reconfigure -f noninteractive unattended-upgrades >/dev/null 2>&1 || true
 ok "Docker $(docker --version | cut -d' ' -f3 | tr -d ,), certbot y actualizaciones automáticas"
 
 # -----------------------------------------------------------------------------
 paso "2/6 Cortafuegos (solo 22, 80 y 443)"
-ufw allow OpenSSH >/dev/null
-ufw allow 80/tcp >/dev/null
-ufw allow 443/tcp >/dev/null
-ufw --force enable >/dev/null
-ok "$(ufw status | head -1)"
+if [[ $ORACLE -eq 1 ]]; then
+  # Oracle Cloud: se mantienen sus reglas (rechaza todo salvo SSH) y se abren 80 y 443
+  # justo antes de la regla REJECT, tanto en caliente como en /etc/iptables/rules.v4.
+  for PUERTO in 80 443; do
+    if ! iptables -C INPUT -p tcp -m state --state NEW -m tcp --dport $PUERTO -j ACCEPT 2>/dev/null; then
+      POS=$(iptables -L INPUT --line-numbers -n | awk '$2=="REJECT"{print $1; exit}')
+      iptables -I INPUT "${POS:-1}" -p tcp -m state --state NEW -m tcp --dport $PUERTO -j ACCEPT
+    fi
+    grep -q -- "--dport $PUERTO -j ACCEPT" /etc/iptables/rules.v4 || \
+      sed -i "0,/^-A INPUT -j REJECT/s//-A INPUT -p tcp -m state --state NEW -m tcp --dport $PUERTO -j ACCEPT\n&/" /etc/iptables/rules.v4
+  done
+  ok "Oracle Cloud: cortafuegos del sistema con 22, 80 y 443 abiertos"
+  aviso "Abre también 80 y 443 en la 'Security List' de la red (VCN) en el panel de Oracle"
+else
+  ufw allow OpenSSH >/dev/null
+  ufw allow 80/tcp >/dev/null
+  ufw allow 443/tcp >/dev/null
+  ufw --force enable >/dev/null
+  ok "$(ufw status | head -1)"
+fi
 
 # -----------------------------------------------------------------------------
 paso "3/6 Configuración (.env)"
