@@ -28,7 +28,7 @@ Los albaranes **no cuentan** para el IVA ni la contabilidad: solo la factura men
 - **Liquidado** por la gestoría: contabiliza todo lo revisado del mes (facturas y cierres de caja), guarda el informe y nadie puede modificar documentos de ese mes hasta que la gestoría lo **reabra**.
 - **Qué falta**: documentos sin revisar o rechazados, albaranes sin factura, facturas que no cuadran, facturas recibidas sin cuadrar, proveedores habituales que este mes no han facturado, pagos y cobros del banco sin factura, y días sin cierre de caja (aprende qué días cierra el negocio).
 
-Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL y Storage, en el proyecto *Genia*) · **Nginx** como capa de entrada · **Tesseract** para el OCR local.
+Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL y Storage, en su propio proyecto *gestoria*) · **Nginx** como capa de entrada · **Tesseract** para el OCR local.
 
 ---
 
@@ -49,7 +49,7 @@ Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL 
         │  TLS verify-full (PostgreSQL) · HTTPS (Storage)
         ▼
  ┌──────────────┐   esquema `gestoria` aislado · RLS forzado · bucket privado
- │ Supabase/Genia│
+ │ Supabase      │
  └──────────────┘
 ```
 
@@ -85,14 +85,14 @@ Stack: **FastAPI + SQLAlchemy** · **React + Vite** · **Supabase** (PostgreSQL 
 - `TrustedHostMiddleware`, CORS cerrado, documentación desactivada en producción, errores 500 sin detalles internos y contenedor sin root, de solo lectura y sin capabilities.
 - **Auditoría**: tabla `auditoria` con quién, qué, cuándo y desde qué IP. La API no puede modificarla ni borrarla.
 
-### Capa base de datos (Supabase, proyecto Genia)
+### Capa base de datos (Supabase, proyecto gestoria)
 
-La gestoría comparte proyecto con otra aplicación (Genia), así que está **aislada de ella**:
+La gestoría tiene **su propio proyecto de Supabase** (`gestoria`, ref `fgjoafbpejgrbnjsufvi`, Irlanda), sin ninguna otra aplicación dentro. Además:
 
-- Todas las tablas viven en el esquema propio **`gestoria`**, que no está expuesto en la API REST pública de Supabase y en el que `anon`, `authenticated` y `public` **no tienen ni permiso de uso**. Las tablas de Genia (`public`) no se tocan.
-- La API conecta con el rol dedicado **`gestoria_api`** (solo DML sobre `gestoria`, sin DDL, sin acceso a las tablas de Genia) y su `search_path` apunta a `gestoria`.
+- Todas las tablas viven en el esquema propio **`gestoria`**, que no está expuesto en la API REST pública de Supabase y en el que `anon`, `authenticated` y `public` **no tienen ni permiso de uso**.
+- La API conecta con el rol dedicado **`gestoria_api`** (solo DML sobre `gestoria`, sin DDL) y su `search_path` apunta a `gestoria`.
 - **RLS activado y forzado** en las 12 tablas como segunda barrera. La auditoría no se puede modificar ni borrar.
-- **No se usa Supabase Auth**: los usuarios de la gestoría no aparecen en `auth.users`, no disparan el trigger de alta de Genia y no tienen acceso a Genia (ni los de Genia a la gestoría).
+- **No se usa Supabase Auth**: los usuarios de la gestoría no aparecen en `auth.users`; el login lo gestiona la propia API.
 - Fotos en el bucket **privado `gestoria-facturas`** (máx. 10 MB, solo JPG/PNG/WEBP/HEIC/PDF), sin políticas de Storage: solo el backend, con la clave `service_role`, puede leerlo o escribirlo.
 - El frontend no habla con Supabase: datos y fotos pasan siempre por la API.
 
@@ -100,7 +100,7 @@ La gestoría comparte proyecto con otra aplicación (Genia), así que está **ai
 
 ## Puesta en marcha en producción
 
-Las tres migraciones de `supabase/migrations/` **ya están aplicadas** en el proyecto Genia (esquema, tablas, permisos, RLS, rol `gestoria_api` todavía sin login, bucket, albaranes, roles, caja TPV y cierres de mes).
+Las cuatro migraciones de `supabase/migrations/` **ya están aplicadas** en el proyecto `gestoria` (esquema, tablas, permisos, RLS, rol `gestoria_api` todavía sin login, bucket, albaranes, roles, caja TPV y cierres de mes).
 
 **Antes de empezar (en Supabase y en tu proveedor de dominio):**
 

@@ -57,8 +57,8 @@ fi
 if [[ "$crear_env" =~ ^[sS]$ ]]; then
   read -rp "Dominio de la aplicación (ej. gestoria.tudominio.es): " DOMINIO
   [[ -n "$DOMINIO" ]] || error "El dominio es obligatorio"
-  read -rp "URL del proyecto Supabase [https://exvvvmwdxlitsvomgbfm.supabase.co]: " SUPABASE_URL
-  SUPABASE_URL=${SUPABASE_URL:-https://exvvvmwdxlitsvomgbfm.supabase.co}
+  read -rp "URL del proyecto Supabase [https://fgjoafbpejgrbnjsufvi.supabase.co]: " SUPABASE_URL
+  SUPABASE_URL=${SUPABASE_URL:-https://fgjoafbpejgrbnjsufvi.supabase.co}
   REF=$(echo "$SUPABASE_URL" | sed -E 's#https://([^.]+)\..*#\1#')
   echo "Clave secreta de Supabase solo para la gestoría (empieza por sb_secret_). No se mostrará:"
   read -rs SUPABASE_SECRET_KEY; echo

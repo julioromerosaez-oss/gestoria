@@ -1,4 +1,4 @@
-# Producción: Nginx (único servicio expuesto) -> FastAPI (red interna) -> Supabase/Genia (TLS)
+# Producción: Nginx (único servicio expuesto) -> FastAPI (red interna) -> Supabase, proyecto gestoria (TLS)
 services:
   nginx:
     build:
@@ -29,7 +29,7 @@ services:
       AUTH_MODO: local            # login propio (no Supabase Auth)
       STORAGE_MODO: supabase      # fotos en el bucket privado de Supabase
       SUPABASE_BUCKET: gestoria-facturas
-      DB_SCHEMA: gestoria         # esquema aislado dentro del proyecto Genia
+      DB_SCHEMA: gestoria         # esquema propio de la app
       SERVIR_FRONTEND: "0"
       ALLOWED_HOSTS: ${DOMINIO},api,127.0.0.1
       CORS_ORIGINS: https://${DOMINIO}
